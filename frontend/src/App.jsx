@@ -1,14 +1,13 @@
 import CssBaseline from "@mui/material/CssBaseline";
 import Header from "./components/Header";
-import HomeScreen from "./screens/HomeScreen";
-
+import { Outlet } from "react-router-dom";
 
 const App = () => {
   return (
     <>
-      <CssBaseline enableColorScheme/>
+      <CssBaseline enableColorScheme />
       <Header />
-      <HomeScreen />
+      <Outlet />
     </>
   );
 };
