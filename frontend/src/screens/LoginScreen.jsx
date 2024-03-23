@@ -26,11 +26,8 @@ const LoginScreen = () => {
   const submitHandler = async (e) => {
     e.preventDefault();
     try {
-      console.log("1");
       const res = await login({ email, password }).unwrap();
-      console.log("2");
       dispatch(setCredentials({ ...res }));
-      console.log("3");
       navigate("/");
     } catch (err) {
       toast.error(err?.data?.message || err.error);
