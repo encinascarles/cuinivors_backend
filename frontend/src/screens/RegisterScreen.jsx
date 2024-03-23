@@ -8,7 +8,7 @@ import { toast } from 'react-toastify';
 
 const RegisterScreen = () => {
   const [name, setName] = useState("");
-  const [userName, setUserName] = useState("");
+  const [username, setUsername] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [passwordVerify, setPasswordVerify] = useState("");
@@ -32,7 +32,7 @@ const RegisterScreen = () => {
       toast.error('Passwords do not match');
     } else {
       try {
-        const res = await register({ name, email, password }).unwrap();
+        const res = await register({ name, email, password, username }).unwrap();
         dispatch(setCredentials({ ...res }));
         navigate('/');
       } catch (err) {
@@ -59,8 +59,8 @@ const RegisterScreen = () => {
           variant="outlined"
           label="Nom d'usuari"
           type="text"
-          value={userName}
-          onChange={(e) => setUserName(e.target.value)}
+          value={username}
+          onChange={(e) => setUsername(e.target.value)}
         ></TextField>
         <Box height="20px"></Box>
         <TextField
