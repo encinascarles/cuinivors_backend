@@ -26,19 +26,32 @@ const Header = () => {
   return (
     <AppBar position="static">
       <Toolbar>
-        <Typography variant="h6" component="div" sx={{ flexGrow: 1 }} onClick={() => navigate("/")}>
+        <Typography
+          variant="h6"
+          component="div"
+          sx={{ flexGrow: 1 }}
+          onClick={() => navigate("/")}
+        >
           CUINIVORS
         </Typography>
-        <Button color="inherit" onClick={() => navigate("/login")}>
-          Sign In
-        </Button>
-        <Button color="inherit" onClick={() => navigate("/register")}>
-          Sign Up
-        </Button>
-        {userInfo && (
-          <Button color="inherit" onClick={logoutHandler}>
-            Log Out
-          </Button>
+        {userInfo ? (
+          <>
+            <Button color="inherit" onClick={() => navigate("/profile")}>
+              Profile
+            </Button>
+            <Button color="inherit" onClick={logoutHandler}>
+              Log Out
+            </Button>
+          </>
+        ) : (
+          <>
+            <Button color="inherit" onClick={() => navigate("/login")}>
+              Sign In
+            </Button>
+            <Button color="inherit" onClick={() => navigate("/register")}>
+              Sign Up
+            </Button>
+          </>
         )}
       </Toolbar>
     </AppBar>
