@@ -10,7 +10,7 @@ const RecipeScreen = () => {
   const [ingredients, setIngredients] = useState([""]);
   const [steps, setSteps] = useState([""]);
   const [recomendations, setRecomendations] = useState("");
-  const [procedencia, setProcedencia] = useState("");
+  const [provenance, setProvenace] = useState("");
 
   return (
     <Box
@@ -66,8 +66,8 @@ const RecipeScreen = () => {
       <TextField
         label={`Procedencia`}
         variant="outlined"
-        value={procedencia}
-        onChange={(event) => setProcedencia(event.target.value)}
+        value={provenance}
+        onChange={(event) => setProvenace(event.target.value)}
         multiline
         minRows={2}
       />
