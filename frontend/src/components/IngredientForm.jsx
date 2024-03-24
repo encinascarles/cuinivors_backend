@@ -3,13 +3,13 @@ import RemoveCircleOutlineIcon from "@mui/icons-material/RemoveCircleOutline";
 
 const IngredientForm = ({ ingredients, setIngredients }) => {
   const handleIngredientChange = (index, event) => {
-    const newIngredient = [...ingredients];
-    newIngredient[index] = event.target.value;
-    setIngredients(newIngredient);
+    const newIngredients = [...ingredients];
+    newIngredients[index] = event.target.value;
+    setIngredients(newIngredients);
 
     // If the last ingredient is being modified and it is not empty, add a new empty ingredient
     if (index === ingredients.length - 1 && event.target.value !== "") {
-      setIngredients([...ingredients, ""]);
+      setIngredients([...newIngredients, ""]);
     }
   };
 

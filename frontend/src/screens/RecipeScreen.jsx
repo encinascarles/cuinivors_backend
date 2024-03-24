@@ -2,6 +2,7 @@ import { useState } from "react";
 import { Box, Button, TextField, Typography } from "@mui/material";
 import IngredientForm from "../components/IngredientForm";
 import StepsForm from "../components/StepsForm";
+import { useAddRecipeMutation } from "../slices/recipeApiSlice";
 
 const RecipeScreen = () => {
   const [name, setName] = useState("");
@@ -11,6 +12,20 @@ const RecipeScreen = () => {
   const [steps, setSteps] = useState([""]);
   const [recomendations, setRecomendations] = useState("");
   const [provenance, setProvenace] = useState("");
+
+  const [addRecipe, { isLoading }] = useAddRecipeMutation();
+
+  const handleSubmit = async () => {
+    const res = await addRecipe({
+      name,
+      prepTime,
+      totalTime,
+      ingredients,
+      steps,
+      recomendations,
+      provenance,
+    }).unwrap();
+  };
 
   return (
     <Box
@@ -71,7 +86,7 @@ const RecipeScreen = () => {
         multiline
         minRows={2}
       />
-      <Button variant="contained" color="primary">
+      <Button variant="contained" color="primary" onClick={handleSubmit}>
         Guardar
       </Button>
     </Box>
