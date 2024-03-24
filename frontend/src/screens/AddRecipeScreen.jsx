@@ -5,7 +5,7 @@ import StepsForm from "../components/StepsForm";
 import { useAddRecipeMutation } from "../slices/recipeApiSlice";
 import { useSelector } from "react-redux";
 
-const RecipeScreen = () => {
+const AddRecipeScreen = () => {
   const [name, setName] = useState("");
   const [prepTime, setPrepTime] = useState("");
   const [totalTime, setTotalTime] = useState("");
@@ -96,4 +96,4 @@ const RecipeScreen = () => {
   );
 };
 
-export default RecipeScreen;
+export default AddRecipeScreen;
