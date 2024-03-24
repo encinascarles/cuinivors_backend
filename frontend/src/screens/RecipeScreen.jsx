@@ -3,6 +3,7 @@ import { Box, Button, TextField, Typography } from "@mui/material";
 import IngredientForm from "../components/IngredientForm";
 import StepsForm from "../components/StepsForm";
 import { useAddRecipeMutation } from "../slices/recipeApiSlice";
+import { useSelector } from "react-redux";
 
 const RecipeScreen = () => {
   const [name, setName] = useState("");
@@ -14,9 +15,11 @@ const RecipeScreen = () => {
   const [provenance, setProvenace] = useState("");
 
   const [addRecipe, { isLoading }] = useAddRecipeMutation();
+  const { userInfo } = useSelector((state) => state.auth);
 
   const handleSubmit = async () => {
     const res = await addRecipe({
+      user_id: userInfo._id,
       name,
       prepTime,
       totalTime,

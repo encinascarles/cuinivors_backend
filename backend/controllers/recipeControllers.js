@@ -7,6 +7,7 @@ import Recipe from "../models/recipeModel.js";
 // @access  Public
 const addRecipe = asyncHandler(async (req, res) => {
   const {
+    user_id,
     name,
     prepTime,
     totalTime,
@@ -16,6 +17,7 @@ const addRecipe = asyncHandler(async (req, res) => {
     provenance,
   } = req.body;
   const recipe = await Recipe.create({
+    user_id,
     name,
     prepTime,
     totalTime,
@@ -28,6 +30,7 @@ const addRecipe = asyncHandler(async (req, res) => {
   if (recipe) {
     res.status(201).json({
       _id: recipe._id,
+      user_id: recipe.user_id,
       name: recipe.name,
       prepTime: recipe.prepTime,
       totalTime: recipe.totalTime,
