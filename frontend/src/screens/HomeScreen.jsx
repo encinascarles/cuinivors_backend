@@ -24,7 +24,11 @@ const HomeScreen = () => {
       >
         Inicia sessió
       </Button>
-      <Button variant="outlined" color="primary">
+      <Button
+        variant="outlined"
+        color="primary"
+        onClick={() => navigate("/register")}
+      >
         Registra't
       </Button>
     </Box>
