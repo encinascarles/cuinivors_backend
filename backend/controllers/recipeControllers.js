@@ -61,7 +61,7 @@ const addRecipe = asyncHandler(async (req, res) => {
 // @route   GET /api/recipes
 // @access  Private
 const getUserRecipes = asyncHandler(async (req, res) => {
-  const { user_id } = req.body;
+  const { user_id } = req.query;
   const recipes = await Recipe.find({ user_id });
 
   const recipesToSend = recipes.map((recipe) => {

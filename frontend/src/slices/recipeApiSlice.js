@@ -10,9 +10,13 @@ export const recipeApiSlice = apiSlice.injectEndpoints({
         body: data,
       }),
     }),
+    getUserRecipes: builder.query({
+      query: (userId) => `${RECIPES_URL}?user_id=${userId}`,
+    }),
   }),
 });
 
 export const {
   useAddRecipeMutation,
+  useGetUserRecipesQuery,
 } = recipeApiSlice;
