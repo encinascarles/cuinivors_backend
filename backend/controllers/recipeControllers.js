@@ -6,7 +6,6 @@ import { uploadFileToBlob } from "../utils/uploadFileToBlob.js";
 // @route   POST /api/recipes
 // @access  Private
 const addRecipe = asyncHandler(async (req, res) => {
-  console.log("entrant post")
   const { user_id, name, provenance, recomendations } = req.body;
 
   const prepTime = Number(req.body.prepTime);
@@ -58,5 +57,22 @@ const addRecipe = asyncHandler(async (req, res) => {
   }
 });
 
+// @desc    Get user recipes
+// @route   GET /api/recipes
+// @access  Private
+const getUserRecipes = asyncHandler(async (req, res) => {
+  const { user_id } = req.body;
+  const recipes = await Recipe.find({ user_id });
 
-export { addRecipe };
+  const recipesToSend = recipes.map((recipe) => {
+    return {
+      _id: recipe._id,
+      name: recipe.name,
+      image: recipe.image,
+    };
+  });
+  res.json(recipesToSend);
+});
+
+
+export { addRecipe, getUserRecipes };
