@@ -6,6 +6,7 @@ import { uploadFileToBlob } from "../utils/uploadFileToBlob.js";
 // @route   POST /api/recipes
 // @access  Private
 const addRecipe = asyncHandler(async (req, res) => {
+  console.log("entrant post")
   const { user_id, name, provenance, recomendations } = req.body;
 
   const prepTime = Number(req.body.prepTime);
