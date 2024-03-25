@@ -38,7 +38,7 @@ const StepsForm = ({ steps, setSteps }) => {
       }}
     >
       {steps.map((step, index) => (
-        <Box style={{ display: "flex", alignItems: "flex-start", gap: "10px" }}>
+        <Box key={index} style={{ display: "flex", alignItems: "flex-start", gap: "10px" }}>
           <Chip label={`Pas ${index + 1}`} color="primary" />
           <TextField
             fullWidth

@@ -37,7 +37,7 @@ const IngredientForm = ({ ingredients, setIngredients }) => {
       }}
     >
       {ingredients.map((ingredient, index) => (
-        <Box style={{ display: "flex", alignItems: "center", gap: "10px" }}>
+        <Box key={index} style={{ display: "flex", alignItems: "center", gap: "10px" }}>
           <TextField
             fullWidth
             label={ingredient? `Ingredient ${index + 1}` : "Afegir ingredient"}
