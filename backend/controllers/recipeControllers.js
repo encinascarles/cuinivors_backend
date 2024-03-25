@@ -1,21 +1,31 @@
 import asyncHandler from "express-async-handler";
 import Recipe from "../models/recipeModel.js";
-
+import { uploadFileToBlob } from "../utils/uploadFileToBlob.js";
 
 // @desc    Auth user & get token
 // @route   POST /api/recipes
-// @access  Public
+// @access  Private
 const addRecipe = asyncHandler(async (req, res) => {
-  const {
-    user_id,
-    name,
-    prepTime,
-    totalTime,
-    ingredients,
-    steps,
-    recomendations,
-    provenance,
-  } = req.body;
+  const { user_id, name, provenance, recomendations } = req.body;
+
+  const prepTime = Number(req.body.prepTime);
+  const totalTime = Number(req.body.totalTime);
+  const ingredients = JSON.parse(req.body.ingredients);
+  const steps = JSON.parse(req.body.steps);
+
+  if (!req.file) {
+    return res.status(400).send("File not found for upload.");
+  }
+
+  let imageUrl = "";
+
+  try {
+    imageUrl = await uploadFileToBlob(req.file);
+  } catch (error) {
+    res.status(500).send("Error uploading image.");
+    return;
+  }
+
   const recipe = await Recipe.create({
     user_id,
     name,
@@ -25,6 +35,7 @@ const addRecipe = asyncHandler(async (req, res) => {
     steps,
     recomendations,
     provenance,
+    image: imageUrl,
   });
 
   if (recipe) {
@@ -38,6 +49,7 @@ const addRecipe = asyncHandler(async (req, res) => {
       steps: recipe.steps,
       recomendations: recipe.recomendations,
       provenance: recipe.provenance,
+      image: recipe.image,
     });
   } else {
     res.status(400);
@@ -45,4 +57,22 @@ const addRecipe = asyncHandler(async (req, res) => {
   }
 });
 
-export { addRecipe };
+// @desc    Upload recipe image
+// @route   POST /api/recipes/upload-image
+// @access  Private
+
+const uploadRecipeImage = asyncHandler(async (req, res) => {
+  if (!req.file) {
+    return res.status(400).send("File not found for upload.");
+  }
+
+  try {
+    const imageUrl = await uploadFileToBlob(req.file);
+    res.send({ message: "Image loaded succesfully", url: imageUrl });
+  } catch (error) {
+    console.log(error);
+    res.status(500).send("Error uploading image.");
+  }
+});
+
+export { addRecipe, uploadRecipeImage };
