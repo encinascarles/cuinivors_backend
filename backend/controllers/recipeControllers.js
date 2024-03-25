@@ -58,22 +58,5 @@ const addRecipe = asyncHandler(async (req, res) => {
   }
 });
 
-// @desc    Upload recipe image
-// @route   POST /api/recipes/upload-image
-// @access  Private
 
-const uploadRecipeImage = asyncHandler(async (req, res) => {
-  if (!req.file) {
-    return res.status(400).send("File not found for upload.");
-  }
-
-  try {
-    const imageUrl = await uploadFileToBlob(req.file);
-    res.send({ message: "Image loaded succesfully", url: imageUrl });
-  } catch (error) {
-    console.log(error);
-    res.status(500).send("Error uploading image.");
-  }
-});
-
-export { addRecipe, uploadRecipeImage };
+export { addRecipe };
