@@ -59,7 +59,7 @@ const addRecipe = asyncHandler(async (req, res) => {
 // @desc    Get user recipes
 // @route   GET /api/recipes/userRecipes/
 // @access  Private
-const getUserRecipes = asyncHandler(async (req, res) => {  
+const getUserRecipes = asyncHandler(async (req, res) => {
   if (req.user) {
     const recipes = await Recipe.find({ user_id: req.user._id });
 
@@ -80,15 +80,64 @@ const getUserRecipes = asyncHandler(async (req, res) => {
 // @desc    Get single recipe provided the recipe id
 // @route   GET /api/recipes/:recipe_id
 // @access  Private
-const getRecipe = asyncHandler(async (req, res) => {  
-    const {recipe_id} = req.params;
-    const recipes = await Recipe.find({ user_id: req.user._id, _id: recipe_id }).select("-user_id");
-    if (recipes.length === 0) {
-      res.status(404);
-    } else {
-      const recipeToSend = recipes[0];
-      res.json(recipeToSend);
-    }
+const getRecipe = asyncHandler(async (req, res) => {
+  const { recipe_id } = req.params;
+  const recipes = await Recipe.find({
+    user_id: req.user._id,
+    _id: recipe_id,
+  }).select("-user_id");
+  if (recipes.length === 0) {
+    res.status(404);
+  } else {
+    const recipeToSend = recipes[0];
+    res.json(recipeToSend);
+  }
 });
 
-export { addRecipe, getUserRecipes, getRecipe };
+// @desc    Edit a recipe
+// @route   PUT /api/recipes/
+// @access  Private
+const editRecipe = asyncHandler(async (req, res) => {
+  const { name, provenance, recomendations } = req.body;
+
+  const prepTime = Number(req.body.prepTime);
+  const totalTime = Number(req.body.totalTime);
+  const ingredients = JSON.parse(req.body.ingredients);
+  const steps = JSON.parse(req.body.steps);
+
+  const newRecipeData = {
+    name,
+    provenance,
+    recomendations,
+    prepTime,
+    totalTime,
+    ingredients,
+    steps,
+  };
+
+  if (req.file) {
+    let imageUrl = "";
+    try {
+      imageUrl = await uploadFileToBlob(req.file);
+      newRecipeData.image = imageUrl;
+    } catch (error) {
+      res.status(500).send("Error uploading image.");
+      return;
+    }
+  }
+
+  const { recipe_id } = req.params;
+
+  const recipe = await Recipe.findOneAndUpdate(
+    { _id: recipe_id, user_id: req.user._id },
+    newRecipeData,
+    { new: true }
+  );
+  if (!recipe) {
+    res.status(404);
+    throw new Error("Recipe not found");
+  }
+  res.json(recipe);
+});
+
+export { addRecipe, getUserRecipes, getRecipe, editRecipe };
