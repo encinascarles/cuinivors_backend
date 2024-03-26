@@ -14,7 +14,6 @@ const authUser = asyncHandler(async (req, res) => {
     generateToken(res, user._id);
 
     res.json({
-      _id: user._id,
       name: user.name,
       email: user.email,
       username: user.username,
@@ -47,7 +46,6 @@ const registerUser = asyncHandler(async (req, res) => {
   if (user) {
     generateToken(res, user._id);
     res.status(201).json({
-      _id: user._id,
       name: user.name,
       email: user.email,
       username: user.username,
@@ -75,7 +73,6 @@ const logoutUser = (req, res) => {
 const getUserProfile = asyncHandler(async (req, res) => {
   if (req.user) {
     res.json({
-      _id: req.user._id,
       name: req.user.name,
       email: req.user.email,
       username: req.user.username,
@@ -104,7 +101,6 @@ const updateUserProfile = asyncHandler(async (req, res) => {
     const updatedUser = await user.save();
 
     res.json({
-      _id: updatedUser._id,
       name: updatedUser.name,
       email: updatedUser.email,
       username: updatedUser.username,
