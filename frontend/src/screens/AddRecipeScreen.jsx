@@ -36,13 +36,11 @@ const AddRecipeScreen = () => {
   };
 
   const [addRecipe, { isLoading }] = useAddRecipeMutation();
-  const { userInfo } = useSelector((state) => state.auth);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
     console.log("Submitting form");
     const formData = new FormData();
-    formData.append("user_id", userInfo._id);
     formData.append("name", name);
     formData.append("prepTime", prepTime);
     formData.append("totalTime", totalTime);

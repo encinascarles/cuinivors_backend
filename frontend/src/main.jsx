@@ -17,6 +17,7 @@ import ProfileScreen from "./screens/ProfileScreen.jsx";
 import PrivateRoute from "./components/PrivateRoute.jsx";
 import AddRecipeScreen from "./screens/AddRecipeScreen.jsx";
 import ShowRecipesScreen from "./screens/ShowRecipesScreen.jsx";
+import ShowRecipeScreen from "./screens/ShowRecipeScreen.jsx";
 
 const router = createBrowserRouter(
   createRoutesFromElements(
@@ -28,6 +29,7 @@ const router = createBrowserRouter(
         <Route path="/profile" element={<ProfileScreen />} />
           <Route path="/recipes/add" element={<AddRecipeScreen />} />
           <Route path="/recipes/" element={<ShowRecipesScreen />} />
+          <Route path="/recipes/:recipe_id" element={<ShowRecipeScreen />} />
       </Route>
     </Route>
   )
