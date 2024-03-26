@@ -6,7 +6,7 @@ import { uploadFileToBlob } from "../utils/uploadFileToBlob.js";
 // @route   POST /api/recipes
 // @access  Private
 const addRecipe = asyncHandler(async (req, res) => {
-  const { user_id, name, provenance, recomendations } = req.body;
+  const { name, provenance, recomendations } = req.body;
 
   const prepTime = Number(req.body.prepTime);
   const totalTime = Number(req.body.totalTime);
@@ -27,7 +27,7 @@ const addRecipe = asyncHandler(async (req, res) => {
   }
 
   const recipe = await Recipe.create({
-    user_id,
+    user_id: req.user._id,
     name,
     prepTime,
     totalTime,
@@ -41,7 +41,6 @@ const addRecipe = asyncHandler(async (req, res) => {
   if (recipe) {
     res.status(201).json({
       _id: recipe._id,
-      user_id: recipe.user_id,
       name: recipe.name,
       prepTime: recipe.prepTime,
       totalTime: recipe.totalTime,
@@ -58,21 +57,38 @@ const addRecipe = asyncHandler(async (req, res) => {
 });
 
 // @desc    Get user recipes
-// @route   GET /api/recipes
+// @route   GET /api/recipes/userRecipes/
 // @access  Private
-const getUserRecipes = asyncHandler(async (req, res) => {
-  const { user_id } = req.query;
-  const recipes = await Recipe.find({ user_id });
+const getUserRecipes = asyncHandler(async (req, res) => {  
+  if (req.user) {
+    const recipes = await Recipe.find({ user_id: req.user._id });
 
-  const recipesToSend = recipes.map((recipe) => {
-    return {
-      _id: recipe._id,
-      name: recipe.name,
-      image: recipe.image,
-    };
-  });
-  res.json(recipesToSend);
+    const recipesToSend = recipes.map((recipe) => {
+      return {
+        _id: recipe._id,
+        name: recipe.name,
+        image: recipe.image,
+      };
+    });
+    res.json(recipesToSend);
+  } else {
+    res.status(400);
+    throw new Error("Invalid query parameters");
+  }
 });
 
+// @desc    Get single recipe provided the recipe id
+// @route   GET /api/recipes/:recipe_id
+// @access  Private
+const getRecipe = asyncHandler(async (req, res) => {  
+    const {recipe_id} = req.params;
+    const recipes = await Recipe.find({ user_id: req.user._id, _id: recipe_id }).select("-user_id");
+    if (recipes.length === 0) {
+      res.status(404);
+    } else {
+      const recipeToSend = recipes[0];
+      res.json(recipeToSend);
+    }
+});
 
-export { addRecipe, getUserRecipes };
+export { addRecipe, getUserRecipes, getRecipe };
