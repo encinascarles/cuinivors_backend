@@ -16,6 +16,13 @@ export const recipeApiSlice = apiSlice.injectEndpoints({
     getRecipe: builder.query({
       query: (recipeId) => `${RECIPES_URL}/${recipeId}`,
     }),
+    editRecipe: builder.mutation({
+      query: ({recipe_id, data}) => ({
+        url: `${RECIPES_URL}/edit/${recipe_id}`,
+        method: "PUT",
+        body: data,
+      }),
+    }),
   }),
 });
 
@@ -23,4 +30,5 @@ export const {
   useAddRecipeMutation,
   useGetUserRecipesQuery,
   useGetRecipeQuery,
+  useEditRecipeMutation,
 } = recipeApiSlice;

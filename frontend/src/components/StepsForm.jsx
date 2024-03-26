@@ -16,7 +16,7 @@ const StepsForm = ({ steps, setSteps }) => {
 
     // If the last step is being modified and it is not empty, add a new empty step
     if (index === steps.length - 1 && event.target.value !== "") {
-      setSteps([...steps, ""]);
+      setSteps([...newSteps, ""]);
     }
   };
 
@@ -45,7 +45,7 @@ const StepsForm = ({ steps, setSteps }) => {
             variant="outlined"
             multiline
             minRows={3}
-            value={step.descripcion}
+            value={step}
             onChange={(event) => handleStepChange(index, event)}
           />
           {steps.length > 1 && (

@@ -1,8 +1,12 @@
-import { useState } from "react";
-import { useAddRecipeMutation } from "../slices/recipeApiSlice";
+import { useEffect, useState } from "react";
 import RecipeForm from "../components/RecipeForm";
+import { useParams } from "react-router-dom";
+import { useEditRecipeMutation, useGetRecipeQuery } from "../slices/recipeApiSlice";
 
-const AddRecipeScreen = () => {
+const EditRecipeScreen = () => {
+  const { recipe_id } = useParams(); 
+  const { data: recipe } = useGetRecipeQuery(recipe_id);
+
   const [name, setName] = useState("");
   const [prepTime, setPrepTime] = useState("");
   const [totalTime, setTotalTime] = useState("");
@@ -12,7 +16,19 @@ const AddRecipeScreen = () => {
   const [provenance, setProvenace] = useState("");
   const [file, setFile] = useState(null);
 
-  const [addRecipe, { isLoading }] = useAddRecipeMutation();
+  useEffect(() => {
+    if (recipe) {
+      setName(recipe.name);
+      setPrepTime(recipe.prepTime);
+      setTotalTime(recipe.totalTime);
+      setIngredients(recipe.ingredients);
+      setSteps(recipe.steps);
+      setRecomendations(recipe.recomendations);
+      setProvenace(recipe.provenance);
+    }
+  }, [recipe]);
+
+  const [editRecipe, { isLoading: isEditing }] = useEditRecipeMutation();
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -24,9 +40,9 @@ const AddRecipeScreen = () => {
     formData.append("steps", JSON.stringify(steps));
     formData.append("recomendations", recomendations);
     formData.append("provenance", provenance);
-    formData.append("image", file);
+    //file && formData.append("image", file);
+    const res = await editRecipe({recipe_id, data: formData}).unwrap();
 
-    const res = await addRecipe(formData).unwrap();
   };
 
   return (
@@ -52,4 +68,4 @@ const AddRecipeScreen = () => {
   );
 };
 
-export default AddRecipeScreen;
+export default EditRecipeScreen;
