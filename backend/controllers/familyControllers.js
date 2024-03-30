@@ -134,7 +134,7 @@ const addInvite = asyncHandler(async (req, res) => {
     family.invites.push(user_id);
     await family.save();
     //Add invite to user model
-    user.invites.push({ family_id, user_id: req.user._id });
+    user.invites.push({ family_id, inviter_id: req.user._id });
     await user.save();
     res.json({ message: "Invite sent" });
   } else {

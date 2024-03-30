@@ -28,7 +28,7 @@ const userSchema = mongoose.Schema(
           required: true,
           ref: "Family",
         },
-        user_id: {
+        inviter_id: {
           type: mongoose.Schema.Types.ObjectId,
           required: true,
           ref: "User",
