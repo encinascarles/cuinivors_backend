@@ -5,6 +5,9 @@ import {
   logoutUser,
   getUserProfile,
   updateUserProfile,
+  addFavorite,
+  removeFavorite,
+  deleteUser,
 } from "../controllers/userControllers.js";
 import { protect } from "../middleware/authMiddleware.js";
 
@@ -17,5 +20,8 @@ router
   .route("/profile")
   .get(protect, getUserProfile)
   .put(protect, updateUserProfile);
+router.post("/favorites/add", protect, addFavorite);
+router.post("/favorites/remove", protect, removeFavorite);
+router.delete("/", protect, deleteUser);
 
 export default router;

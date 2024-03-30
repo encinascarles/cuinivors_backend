@@ -17,6 +17,7 @@ const authUser = asyncHandler(async (req, res) => {
       name: user.name,
       email: user.email,
       username: user.username,
+      invites: user.invites,
     });
   } else {
     res.status(401);
@@ -28,7 +29,7 @@ const authUser = asyncHandler(async (req, res) => {
 // @route   POST /api/users
 // @access  Public
 const registerUser = asyncHandler(async (req, res) => {
-  const { name, email, password, username} = req.body;
+  const { name, email, password, username } = req.body;
   const userExists = await User.findOne({ email });
 
   if (userExists) {
@@ -49,6 +50,7 @@ const registerUser = asyncHandler(async (req, res) => {
       name: user.name,
       email: user.email,
       username: user.username,
+      invites: user.invites,
     });
   } else {
     res.status(400);
@@ -76,6 +78,7 @@ const getUserProfile = asyncHandler(async (req, res) => {
       name: req.user.name,
       email: req.user.email,
       username: req.user.username,
+      invites: req.user.invites,
     });
   } else {
     res.status(404);
@@ -104,6 +107,80 @@ const updateUserProfile = asyncHandler(async (req, res) => {
       name: updatedUser.name,
       email: updatedUser.email,
       username: updatedUser.username,
+      invites: updatedUser.invites,
+    });
+  } else {
+    res.status(404);
+    throw new Error("User not found");
+  }
+});
+
+// @desc    Add favorite recipe
+// @route   POST /api/users/favorites/add
+// @access  Private
+
+const addFavorite = asyncHandler(async (req, res) => {
+  const { recipe_id } = req.body;
+  const user = await User.findById(req.user._id);
+  if (user) {
+    //check if recipe is already in favorites
+    if (user.favorites.includes(recipe_id)) {
+      res.status(400);
+      throw new Error("Recipe already in favorites");
+    }
+    user.favorites.push(recipe_id);
+    const updatedUser = await user.save();
+    res.status(201).json({
+      message: "Recipe added to favorites",
+    });
+  } else {
+    res.status(404);
+    throw new Error("User not found");
+  }
+});
+
+// @desc    Remove favorite recipe
+// @route   POST /api/users/favorites/remove
+// @access  Private
+
+const removeFavorite = asyncHandler(async (req, res) => {
+  const { recipe_id } = req.body;
+  const user = await User.findById(req.user._id);
+  if (user) {
+    if (!user.favorites.includes(recipe_id)) {
+      res.status(400);
+      throw new Error("Recipe not in favorites");
+    }
+    user.favorites = user.favorites.filter(
+      (favorite) => favorite.toString() !== recipe_id
+    );
+    const updatedUser = await user.save();
+    res.status(201).json({
+      message: "Recipe removed from favorites",
+    });
+  } else {
+    res.status(404);
+    throw new Error("User not found");
+  }
+});
+
+// @desc    Delete User
+// @route   DELETE /api/users/
+// @access  Private
+
+const deleteUser = asyncHandler(async (req, res) => {
+  //delete user recipes
+  await Recipe.deleteMany({ creator_id: req.user._id });
+  //delete invites
+  await Family.updateMany(
+    { "members.user_id": req.user._id },
+    { $pull: { members: { user_id: req.user._id } } }
+  );
+  //delete user
+  const user = await User.findByIdAndDelete(req.user._id);
+  if (user) {
+    res.status(200).json({
+      message: "User deleted",
     });
   } else {
     res.status(404);
@@ -117,4 +194,7 @@ export {
   logoutUser,
   getUserProfile,
   updateUserProfile,
+  addFavorite,
+  removeFavorite,
+  deleteUser,
 };

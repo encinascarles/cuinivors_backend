@@ -2,7 +2,7 @@ import mongoose from "mongoose";
 
 const recipeSchema = mongoose.Schema(
   {
-    user_id: {
+    creator_id: {
       type: mongoose.Schema.Types.ObjectId,
       ref: "User",
       required: true,
@@ -27,17 +27,22 @@ const recipeSchema = mongoose.Schema(
       type: [String],
       required: true,
     },
-    recomendations: {
+    recommendations: {
       type: String,
       required: false,
     },
-    provenace: {
+    origin: {
       type: String,
       required: false,
     },
     image: {
       type: String,
       required: false,
+    },
+    private: {
+      type: Boolean,
+      required: true,
+      default: false,
     },
   },
   {

@@ -3,6 +3,7 @@ import dotenv from "dotenv";
 dotenv.config();
 import userRoutes from "./routes/userRoutes.js";
 import recipeRoutes from "./routes/recipeRoutes.js";
+import familyRoutes from "./routes/familyRoutes.js";
 import { notFound, errorHandler } from "./middleware/errorMiddleware.js";
 import connectDB from "./config/db.js";
 import cookieParser from "cookie-parser";
@@ -19,6 +20,7 @@ app.use(cookieParser());
 
 app.use("/api/users", userRoutes);
 app.use("/api/recipes", recipeRoutes);
+app.use("/api/families", familyRoutes);
 
 //error handler
 app.use(notFound);

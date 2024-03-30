@@ -19,7 +19,28 @@ const userSchema = mongoose.Schema(
     username: {
       type: String,
       required: true,
+      unique: true,
     },
+    invites: [
+      {
+        family_id: {
+          type: mongoose.Schema.Types.ObjectId,
+          required: true,
+          ref: "Family",
+        },
+        user_id: {
+          type: mongoose.Schema.Types.ObjectId,
+          required: true,
+          ref: "User",
+        },
+      },
+    ],
+    favorites: [
+      {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: "Recipe",
+      },
+    ],
   },
   {
     timestamps: true,
