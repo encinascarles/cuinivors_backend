@@ -7,6 +7,7 @@ import familyRoutes from "./routes/familyRoutes.js";
 import { notFound, errorHandler } from "./middleware/errorMiddleware.js";
 import connectDB from "./config/db.js";
 import cookieParser from "cookie-parser";
+import mongoose from "mongoose";
 
 const port = process.env.PORT || 3000;
 
@@ -27,3 +28,5 @@ app.use(notFound);
 app.use(errorHandler);
 
 app.listen(port, () => console.log(`Server started on port ${port}`));
+
+export default app;
