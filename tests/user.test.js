@@ -261,7 +261,7 @@ describe("User API", () => {
       expect(updateRes.statusCode).to.equal(401);
     });
   });
-  describe("Add favorite recipe: POST /api/users/favorites", () => {
+  describe("Add favorite recipe: POST /api/users/favorites/add", () => {
     beforeEach(async function () {
       // Log in the user
       const loginRes = await agent.post("/api/users/auth").send({
@@ -309,14 +309,37 @@ describe("User API", () => {
     it("should return 400 if recipe is already in favorites", async function () {
       //Get the user's id
       const user = await User.findOne({ email: mockUser.email });
-
-      it("should return 401 if the user is not authenticated", async function () {
-        const recipeId = "some-recipe-id"; // Replace with a valid recipe ID
-        const addFavoriteRes = await supertest(app)
-          .post("/api/users/favorites/add")
-          .send({ recipeId });
-        expect(addFavoriteRes.statusCode).to.equal(401);
+      //Add a recipe to the database
+      const recipe = await Recipe.create({
+        name: "Test Recipe",
+        description: "Test Description",
+        ingredients: ["Test Ingredient 1", "Test Ingredient 2"],
+        directions: ["Test Direction 1", "Test Direction 2"],
+        category: "Test Category",
+        prep_time: 10,
+        total_time: 20,
+        servings: 4,
+        creator_id: user._id,
       });
+      // Add the recipe to the user's favorites using the database
+      await User.updateOne(
+        { email: mockUser.email },
+        { $push: { favorites: recipe._id } }
+      );
+      // Try to add the recipe to the user's favorites
+      const addFavoriteRes = await agent
+        .post("/api/users/favorites/add")
+        .send({ recipe_id: recipe._id });
+      expect(addFavoriteRes.statusCode).to.equal(400);
+      expect(addFavoriteRes.body.message).to.equal(
+        "Recipe already in favorites"
+      );
+      //delete from the database
+      await Recipe.deleteOne({ _id: recipe._id });
+      User.updateOne(
+        { email: mockUser.email },
+        { $pull: { favorites: recipe._id } }
+      );
     });
     it("should return 400 if recipe_id is missing", async function () {
       const addFavoriteRes = await agent.post("/api/users/favorites/add");
@@ -326,6 +349,92 @@ describe("User API", () => {
       const recipeId = "some-recipe-id"; // Replace with a valid recipe ID
       const addFavoriteRes = await supertest(app)
         .post("/api/users/favorites/add")
+        .send({ recipeId });
+      expect(addFavoriteRes.statusCode).to.equal(401);
+    });
+  });
+  describe("Remove favorite recipe: POST /api/users/favorites/remove", () => {
+    beforeEach(async function () {
+      // Log in the user
+      const loginRes = await agent.post("/api/users/auth").send({
+        email: mockUser.email,
+        password: mockUser.password,
+      });
+      expect(loginRes.statusCode).to.equal(200);
+    });
+    it("should remove a recipe to the user's favorites", async function () {
+      //Get the user's id
+      const user = await User.findOne({ email: mockUser.email });
+
+      // Add a recipe to the database
+      const recipe = await Recipe.create({
+        name: "Test Recipe",
+        description: "Test Description",
+        ingredients: ["Test Ingredient 1", "Test Ingredient 2"],
+        directions: ["Test Direction 1", "Test Direction 2"],
+        category: "Test Category",
+        prep_time: 10,
+        total_time: 20,
+        servings: 4,
+        creator_id: user._id,
+      });
+      // Add the recipe to the user's favorites using the database
+      await User.updateOne(
+        { email: mockUser.email },
+        { $push: { favorites: recipe._id } }
+      );
+      // Remove the recipe to the user's favorites
+      const recipeId = recipe._id;
+      const addFavoriteRes = await agent
+        .post("/api/users/favorites/remove")
+        .send({ recipe_id: recipeId });
+      expect(addFavoriteRes.statusCode).to.equal(201);
+      // Check if the recipe was removed to the user's favorites
+      const updatedUser = await User.findOne({ email: mockUser.email });
+      expect(updatedUser.favorites).to.not.include(recipeId);
+      //delete from the database
+      await Recipe.deleteOne({ _id: recipeId });
+      User.updateOne(
+        { email: mockUser.email },
+        { $pull: { favorites: recipeId } }
+      );
+    });
+    it("should return 400 if recipe_id is missing", async function () {
+      const addFavoriteRes = await agent.post("/api/users/favorites/remove");
+      expect(addFavoriteRes.statusCode).to.equal(400);
+    });
+    it("should return 400 if recipe is not in favorites", async function () {
+      //Get the user's id
+      const user = await User.findOne({ email: mockUser.email });
+      //Add a recipe to the database
+      const recipe = await Recipe.create({
+        name: "Test Recipe",
+        description: "Test Description",
+        ingredients: ["Test Ingredient 1", "Test Ingredient 2"],
+        directions: ["Test Direction 1", "Test Direction 2"],
+        category: "Test Category",
+        prep_time: 10,
+        total_time: 20,
+        servings: 4,
+        creator_id: user._id,
+      });
+      // Try to remove the recipe from the user's favorites
+      const addFavoriteRes = await agent
+        .post("/api/users/favorites/remove")
+        .send({ recipe_id: recipe._id });
+      expect(addFavoriteRes.statusCode).to.equal(400);
+      expect(addFavoriteRes.body.message).to.equal("Recipe not in favorites");
+      //delete from the database
+      await Recipe.deleteOne({ _id: recipe._id });
+    });
+    it("should return 400 if recipe_id is missing", async function () {
+      const addFavoriteRes = await agent.post("/api/users/favorites/remove");
+      expect(addFavoriteRes.statusCode).to.equal(400);
+    });
+    it("should return 401 if the user is not authenticated", async function () {
+      const recipeId = "some-recipe-id"; // Replace with a valid recipe ID
+      const addFavoriteRes = await supertest(app)
+        .post("/api/users/favorites/remove")
         .send({ recipeId });
       expect(addFavoriteRes.statusCode).to.equal(401);
     });
