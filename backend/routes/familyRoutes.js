@@ -9,6 +9,7 @@ import {
   removeInvite,
   deleteFamily,
   removeMember,
+  leaveFamily,
 } from "../controllers/familyControllers.js";
 import { familyAdmin, familyUser } from "../middleware/familyMiddleware.js";
 
@@ -23,5 +24,6 @@ router.post("/addinvite/:id", protect, familyAdmin, addInvite);
 router.post("/removeinvite/:id", protect, familyAdmin, removeInvite);
 router.delete("/:id", protect, familyAdmin, deleteFamily);
 router.post("/removemember/:id", protect, familyAdmin, removeMember);
+router.post("/leave/:id", protect, familyUser, leaveFamily);
 
 export default router;

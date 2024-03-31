@@ -8,6 +8,8 @@ import {
   addFavorite,
   removeFavorite,
   deleteUser,
+  acceptInvite,
+  declineInvite,
 } from "../controllers/userControllers.js";
 import { protect } from "../middleware/authMiddleware.js";
 
@@ -23,5 +25,7 @@ router
 router.post("/favorites/add", protect, addFavorite);
 router.post("/favorites/remove", protect, removeFavorite);
 router.delete("/", protect, deleteUser);
+router.post("/acceptinvite", protect, acceptInvite);
+router.post("/declineinvite", protect, declineInvite);
 
 export default router;

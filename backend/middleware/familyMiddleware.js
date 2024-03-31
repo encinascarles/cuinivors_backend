@@ -4,8 +4,12 @@ import Family from "../models/familyModel.js";
 const familyAdmin = asyncHandler(async (req, res, next) => {
   const family = await Family.findById(req.params.id);
   if (family) {
-    const admin = family.members.find((member) => member.admin === true);
-    if (admin.user_id.toString() === req.user._id.toString()) {
+    const user = family.members.find(
+      (member) => member.user_id.toString() === req.user._id.toString()
+    );
+    if (user && user.admin) {
+      req.family = family;
+      req.family_admin = true;
       next();
     } else {
       res.status(401);
@@ -24,6 +28,8 @@ const familyUser = asyncHandler(async (req, res, next) => {
       (member) => member.user_id.toString() === req.user._id.toString()
     );
     if (user) {
+      req.family = family;
+      req.family_admin = user.admin;
       next();
     } else {
       res.status(401);
