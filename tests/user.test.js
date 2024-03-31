@@ -186,4 +186,42 @@ describe("User API", () => {
       expect(res.body.message).to.equal("Invalid email or password");
     });
   });
+  describe("Logout: POST /api/users/logout", () => {
+    it("should logout the user and clear the session", async function () {
+      // Create the user in the database
+      const newUser = {
+        name: "Test User",
+        email: "test@example.com",
+        password: "password",
+        username: "testuser",
+      };
+      await User.create(newUser);
+
+      // Login
+      const loginRes = await agent.post("/api/users/auth").send({
+        email: newUser.email,
+        password: newUser.password,
+      });
+      expect(loginRes.statusCode).to.equal(200);
+
+      // Check cookie
+      expect(loginRes.headers["set-cookie"]).to.exist;
+
+      // Logout
+      const logoutRes = await agent.post("/api/users/logout");
+      expect(logoutRes.statusCode).to.equal(200);
+
+      // Try to access a route that requires authentication
+      const protectedRes = await agent.get("/api/users/profile");
+
+      // You should get a 401 error because the user is no longer authenticated
+      expect(protectedRes.statusCode).to.equal(401);
+
+      // Check cookie
+      expect(protectedRes.headers["set-cookie"]).to.not.exist;
+
+      // Delete user from the database
+      await User.deleteOne({ username: newUser.username });
+    });
+  });
 });
