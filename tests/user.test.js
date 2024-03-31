@@ -2,6 +2,7 @@ import supertest from "supertest";
 import { expect } from "chai";
 import app from "../backend/server.js";
 import User from "../backend/models/userModel.js";
+import Recipe from "../backend/models/recipeModel.js";
 
 let agent;
 
@@ -228,8 +229,8 @@ describe("User API", () => {
       await User.create(newUser);
       // Log in the user
       const loginRes = await agent.post("/api/users/auth").send({
-        email: mockUser.email,
-        password: mockUser.password,
+        email: newUser.email,
+        password: newUser.password,
       });
       expect(loginRes.statusCode).to.equal(200);
 
@@ -241,6 +242,15 @@ describe("User API", () => {
       expect(updateRes.statusCode).to.equal(200);
       expect(updateRes.body).to.have.property("name");
       expect(updateRes.body).to.have.property("email");
+
+      // See if db was updated
+      const updatedUser = await User.findOne({ email: "updated@example.com" });
+      expect(updatedUser).to.exist;
+      expect(updatedUser.name).to.equal("Updated Name");
+      expect(updatedUser.email).to.equal("updated@example.com");
+
+      //delete the user from the database
+      await User.deleteOne({ email: "updated@example.com" });
     });
 
     it("should return 401 if the user is not authenticated", async function () {
@@ -249,6 +259,75 @@ describe("User API", () => {
         email: "updated@example.com",
       });
       expect(updateRes.statusCode).to.equal(401);
+    });
+  });
+  describe("Add favorite recipe: POST /api/users/favorites", () => {
+    beforeEach(async function () {
+      // Log in the user
+      const loginRes = await agent.post("/api/users/auth").send({
+        email: mockUser.email,
+        password: mockUser.password,
+      });
+      expect(loginRes.statusCode).to.equal(200);
+    });
+    it("should add a recipe to the user's favorites", async function () {
+      //Get the user's id
+      const user = await User.findOne({ email: mockUser.email });
+
+      // Add a recipe to the database
+      const recipe = await Recipe.create({
+        name: "Test Recipe",
+        description: "Test Description",
+        ingredients: ["Test Ingredient 1", "Test Ingredient 2"],
+        directions: ["Test Direction 1", "Test Direction 2"],
+        category: "Test Category",
+        prep_time: 10,
+        total_time: 20,
+        servings: 4,
+        creator_id: user._id,
+      });
+      // Add a recipe to the user's favorites
+      const recipeId = recipe._id; // Replace with a valid recipe ID
+      const addFavoriteRes = await agent
+        .post("/api/users/favorites/add")
+        .send({ recipe_id: recipeId });
+      expect(addFavoriteRes.statusCode).to.equal(201);
+      // Check if the recipe was added to the user's favorites
+      const updatedUser = await User.findOne({ email: mockUser.email });
+      expect(updatedUser.favorites).to.include(recipeId);
+      //delete from the database
+      await Recipe.deleteOne({ _id: recipeId });
+      User.updateOne(
+        { email: mockUser.email },
+        { $pull: { favorites: recipeId } }
+      );
+    });
+    it("should return 400 if recipe_id is missing", async function () {
+      const addFavoriteRes = await agent.post("/api/users/favorites/add");
+      expect(addFavoriteRes.statusCode).to.equal(400);
+    });
+    it("should return 400 if recipe is already in favorites", async function () {
+      //Get the user's id
+      const user = await User.findOne({ email: mockUser.email });
+
+      it("should return 401 if the user is not authenticated", async function () {
+        const recipeId = "some-recipe-id"; // Replace with a valid recipe ID
+        const addFavoriteRes = await supertest(app)
+          .post("/api/users/favorites/add")
+          .send({ recipeId });
+        expect(addFavoriteRes.statusCode).to.equal(401);
+      });
+    });
+    it("should return 400 if recipe_id is missing", async function () {
+      const addFavoriteRes = await agent.post("/api/users/favorites/add");
+      expect(addFavoriteRes.statusCode).to.equal(400);
+    });
+    it("should return 401 if the user is not authenticated", async function () {
+      const recipeId = "some-recipe-id"; // Replace with a valid recipe ID
+      const addFavoriteRes = await supertest(app)
+        .post("/api/users/favorites/add")
+        .send({ recipeId });
+      expect(addFavoriteRes.statusCode).to.equal(401);
     });
   });
 });
