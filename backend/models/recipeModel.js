@@ -11,11 +11,11 @@ const recipeSchema = mongoose.Schema(
       type: String,
       required: true,
     },
-    prepTime: {
+    prep_time: {
       type: Number,
       required: true,
     },
-    totalTime: {
+    total_time: {
       type: Number,
       required: true,
     },
@@ -39,7 +39,7 @@ const recipeSchema = mongoose.Schema(
       type: String,
       required: false,
     },
-    private: {
+    is_private: {
       type: Boolean,
       required: true,
       default: false,

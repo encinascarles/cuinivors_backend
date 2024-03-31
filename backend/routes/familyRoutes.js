@@ -18,12 +18,18 @@ const upload = multer({ storage: multer.memoryStorage() });
 const router = express.Router();
 
 router.post("/", protect, upload.single("image"), createFamily);
-router.get("/:id", protect, familyUser, getFamilyById);
-router.put("/:id", protect, familyAdmin, upload.single("image"), modifyFamily);
-router.post("/addinvite/:id", protect, familyAdmin, addInvite);
-router.post("/removeinvite/:id", protect, familyAdmin, removeInvite);
-router.delete("/:id", protect, familyAdmin, deleteFamily);
-router.post("/removemember/:id", protect, familyAdmin, removeMember);
-router.post("/leave/:id", protect, familyUser, leaveFamily);
+router.get("/:family_id", protect, familyUser, getFamilyById);
+router.put(
+  "/:family_id",
+  protect,
+  familyAdmin,
+  upload.single("image"),
+  modifyFamily
+);
+router.post("/addinvite/:family_id", protect, familyAdmin, addInvite);
+router.post("/removeinvite/:family_id", protect, familyAdmin, removeInvite);
+router.delete("/:family_id", protect, familyAdmin, deleteFamily);
+router.post("/removemember/:family_id", protect, familyAdmin, removeMember);
+router.post("/leave/:family_id", protect, familyUser, leaveFamily);
 
 export default router;

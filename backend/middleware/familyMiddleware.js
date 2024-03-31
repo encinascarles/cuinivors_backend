@@ -2,7 +2,7 @@ import asyncHandler from "express-async-handler";
 import Family from "../models/familyModel.js";
 
 const familyAdmin = asyncHandler(async (req, res, next) => {
-  const family = await Family.findById(req.params.id);
+  const family = await Family.findById(req.params.family_id);
   if (family) {
     const user = family.members.find(
       (member) => member.user_id.toString() === req.user._id.toString()
@@ -22,7 +22,7 @@ const familyAdmin = asyncHandler(async (req, res, next) => {
 });
 
 const familyUser = asyncHandler(async (req, res, next) => {
-  const family = await Family.findById(req.params.id);
+  const family = await Family.findById(req.params.family_id);
   if (family) {
     const user = family.members.find(
       (member) => member.user_id.toString() === req.user._id.toString()
