@@ -10,13 +10,26 @@ beforeEach(() => {
 });
 
 describe("User API", () => {
+  // Create a new user in the database
+  const mockUser = {
+    name: "Test User",
+    email: "test@example.com",
+    password: "password",
+    username: "testuser",
+  };
+  before(async function () {
+    await User.create(mockUser);
+  });
+  after(async () => {
+    await User.deleteOne({ username: mockUser.username });
+  });
   describe("Register new user: POST /api/users", () => {
     it("should create a new user and verify it was added to the database", async function () {
       const newUser = {
-        name: "Test User",
-        email: "test@example.com",
+        name: "Test User 2",
+        email: "test2@example.com",
         password: "password",
-        username: "testuser",
+        username: "testuser2",
       };
 
       const res = await agent.post("/api/users").send(newUser);
@@ -39,23 +52,26 @@ describe("User API", () => {
       //delete the user from the database
       await User.deleteOne({ username: newUser.username });
     });
-    it("should return 400 if user already exists", async function () {
-      const newUser = {
-        name: "Test User",
+    it("should return 400 (User already exists with this email) if email already exists", async function () {
+      const res = await agent.post("/api/users").send({
+        name: "Test User 2",
         email: "test@example.com",
         password: "password",
-        username: "testuser",
-      };
-
-      // Create the user in the database
-      await User.create(newUser);
-
-      // Attempt to create the user again
-      const res = await agent.post("/api/users").send(newUser);
+        username: "testuser2",
+      });
       expect(res.statusCode).to.equal(400);
-
-      //delete the user from the database
-      await User.deleteOne({ username: newUser.username });
+      expect(res.body.message).to.equal("User already exists with this email");
+    });
+    it("should return 400 (Username already taken) if username already exists", async function () {
+      // Attempt to create the user again
+      const res = await agent.post("/api/users").send({
+        name: "Test User 2",
+        email: "test2@example.com",
+        password: "password",
+        username: "testuser",
+      });
+      expect(res.statusCode).to.equal(400);
+      expect(res.body.message).to.equal("Username already taken");
     });
     it("should return 400 if name is missing", async function () {
       const newUser = {
@@ -97,56 +113,22 @@ describe("User API", () => {
       const res = await agent.post("/api/users").send(newUser);
       expect(res.statusCode).to.equal(400);
     });
-    it("should return 400 if username already exists", async function () {
-      // Create the user in the database
-      await User.create({
-        name: "Test User 2",
-        email: "test2@gmail.com",
-        password: "password",
-        username: "equaluser",
-      });
-
-      // Attempt to create the user again
-      const res = await agent.post("/api/users").send({
-        name: "Test User 1",
-        email: "test@example.com",
-        password: "password",
-        username: "equaluser",
-      });
-      expect(res.statusCode).to.equal(400);
-
-      //delete the user from the database
-      await User.deleteOne({ username: "equaluser" });
-    });
   });
   describe("Login: POST /api/users/login", () => {
     it("should login user and return user object and cookie", async function () {
-      // Create the user in the database
-      const newUser = {
-        name: "Test User",
-        email: "test@example.com",
-        password: "password",
-        username: "testuser",
-      };
-      await User.create(newUser);
-
-      // Login the user
       const res = await agent.post("/api/users/auth").send({
-        email: newUser.email,
-        password: newUser.password,
+        email: mockUser.email,
+        password: mockUser.password,
       });
 
       expect(res.statusCode).to.equal(200);
       // Verify the response
-      expect(res.body.name).to.equal(newUser.name);
-      expect(res.body.email).to.equal(newUser.email);
-      expect(res.body.username).to.equal(newUser.username);
+      expect(res.body.name).to.equal(mockUser.name);
+      expect(res.body.email).to.equal(mockUser.email);
+      expect(res.body.username).to.equal(mockUser.username);
 
       // Verify the cookie
       expect(res.headers["set-cookie"]).to.exist;
-
-      //delete the user from the database
-      await User.deleteOne({ username: newUser.username });
     });
     it("should return 400 if email is missing", async function () {
       const res = await agent.post("/api/users/auth").send({
@@ -188,19 +170,10 @@ describe("User API", () => {
   });
   describe("Logout: POST /api/users/logout", () => {
     it("should logout the user and clear the session", async function () {
-      // Create the user in the database
-      const newUser = {
-        name: "Test User",
-        email: "test@example.com",
-        password: "password",
-        username: "testuser",
-      };
-      await User.create(newUser);
-
       // Login
       const loginRes = await agent.post("/api/users/auth").send({
-        email: newUser.email,
-        password: newUser.password,
+        email: mockUser.email,
+        password: mockUser.password,
       });
       expect(loginRes.statusCode).to.equal(200);
 
@@ -219,9 +192,63 @@ describe("User API", () => {
 
       // Check cookie
       expect(protectedRes.headers["set-cookie"]).to.not.exist;
+    });
+  });
+  describe("Get user profile: GET /api/users/profile", () => {
+    it("should return the user's profile", async function () {
+      // Log in the user
+      const loginRes = await agent.post("/api/users/auth").send({
+        email: mockUser.email,
+        password: mockUser.password,
+      });
+      expect(loginRes.statusCode).to.equal(200);
 
-      // Delete user from the database
-      await User.deleteOne({ username: newUser.username });
+      // Get the user's profile
+      const profileRes = await agent.get("/api/users/profile");
+      expect(profileRes.statusCode).to.equal(200);
+      expect(profileRes.body).to.have.property("name");
+      expect(profileRes.body).to.have.property("email");
+      expect(profileRes.body).to.have.property("username");
+      expect(profileRes.body).to.have.property("invites");
+    });
+    it("should return 401 if the user is not authenticated", async function () {
+      const profileRes = await supertest(app).get("/api/users/profile");
+      expect(profileRes.statusCode).to.equal(401);
+    });
+  });
+  describe("Update user profile: PUT /api/users/profile", () => {
+    it("should update the user's profile", async function () {
+      // Create the user in the database
+      const newUser = {
+        name: "Test User 2",
+        email: "test2@example.com",
+        password: "password",
+        username: "testuser2",
+      };
+      await User.create(newUser);
+      // Log in the user
+      const loginRes = await agent.post("/api/users/auth").send({
+        email: mockUser.email,
+        password: mockUser.password,
+      });
+      expect(loginRes.statusCode).to.equal(200);
+
+      // Update the user's profile
+      const updateRes = await agent.put("/api/users/profile").send({
+        name: "Updated Name",
+        email: "updated@example.com",
+      });
+      expect(updateRes.statusCode).to.equal(200);
+      expect(updateRes.body).to.have.property("name");
+      expect(updateRes.body).to.have.property("email");
+    });
+
+    it("should return 401 if the user is not authenticated", async function () {
+      const updateRes = await supertest(app).put("/api/users/profile").send({
+        name: "Updated Name",
+        email: "updated@example.com",
+      });
+      expect(updateRes.statusCode).to.equal(401);
     });
   });
 });
