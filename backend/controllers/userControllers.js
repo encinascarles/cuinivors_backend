@@ -20,10 +20,13 @@ const authUser = asyncHandler(async (req, res) => {
     //return user data and token
     generateToken(res, user._id);
     res.json({
-      name: user.name,
-      email: user.email,
-      username: user.username,
-      invites: user.invites,
+      message: "User logged in",
+      user: {
+        name: user.name,
+        email: user.email,
+        username: user.username,
+        invites: user.invites,
+      },
     });
   } else {
     res.status(401);
@@ -64,10 +67,13 @@ const registerUser = asyncHandler(async (req, res) => {
   if (user) {
     generateToken(res, user._id);
     res.status(201).json({
-      name: user.name,
-      email: user.email,
-      username: user.username,
-      invites: user.invites,
+      message: "User created",
+      user: {
+        name: user.name,
+        email: user.email,
+        username: user.username,
+        invites: user.invites,
+      },
     });
   } else {
     res.status(400);
@@ -92,10 +98,12 @@ const logoutUser = (req, res) => {
 // @access  Private
 const getUserProfile = asyncHandler(async (req, res) => {
   res.json({
-    name: req.user.name,
-    email: req.user.email,
-    username: req.user.username,
-    invites: req.user.invites,
+    user: {
+      name: req.user.name,
+      email: req.user.email,
+      username: req.user.username,
+      invites: req.user.invites,
+    },
   });
 });
 
@@ -113,10 +121,13 @@ const updateUserProfile = asyncHandler(async (req, res) => {
   const updatedUser = await req.user.save();
   //return updated user data
   res.json({
-    name: updatedUser.name,
-    email: updatedUser.email,
-    username: updatedUser.username,
-    invites: updatedUser.invites,
+    message: "User updated",
+    user: {
+      name: updatedUser.name,
+      email: updatedUser.email,
+      username: updatedUser.username,
+      invites: updatedUser.invites,
+    },
   });
 });
 

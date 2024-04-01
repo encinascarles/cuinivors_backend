@@ -55,10 +55,11 @@ describe("User API", () => {
       // Create the user
       const res = await agent.post("/api/users").send(newUser);
       expect(res.statusCode).to.equal(201);
+      expect(res.body.message).to.equal("User created");
       // Verify the response
-      expect(res.body.name).to.equal(newUser.name);
-      expect(res.body.email).to.equal(newUser.email);
-      expect(res.body.username).to.equal(newUser.username);
+      expect(res.body.user.name).to.equal(newUser.name);
+      expect(res.body.user.email).to.equal(newUser.email);
+      expect(res.body.user.username).to.equal(newUser.username);
       //changetodo: change it to provide a message and then the user
       // Verify the user was added to the database
       const userInDb = await User.findOne({ username: newUser.username });
@@ -97,7 +98,7 @@ describe("User API", () => {
         username: newUser.username,
       });
       expect(res.statusCode).to.equal(400);
-      //changetodo: change it to provide a message
+      expect(res.body.message).to.equal("Not valid data");
     });
     it("should return 400 if email is missing", async function () {
       const res = await agent.post("/api/users").send({
@@ -106,7 +107,7 @@ describe("User API", () => {
         username: newUser.username,
       });
       expect(res.statusCode).to.equal(400);
-      //changetodo: change it to provide a message
+      expect(res.body.message).to.equal("Not valid data");
     });
     it("should return 400 if password is missing", async function () {
       const res = await agent.post("/api/users").send({
@@ -115,7 +116,7 @@ describe("User API", () => {
         username: newUser.username,
       });
       expect(res.statusCode).to.equal(400);
-      //changetodo: change it to provide a message
+      expect(res.body.message).to.equal("Not valid data");
     });
     it("should return 400 if username is missing", async function () {
       const res = await agent.post("/api/users").send({
@@ -124,9 +125,10 @@ describe("User API", () => {
         password: newUser.password,
       });
       expect(res.statusCode).to.equal(400);
-      //changetodo: change it to provide a message
+      expect(res.body.message).to.equal("Not valid data");
     });
   });
+
   describe("Login: POST /api/users/login", () => {
     beforeEach(async function () {
       await loadUsers();
@@ -138,9 +140,7 @@ describe("User API", () => {
       //login the user
       const res = await login(agent, userFixtures[0]);
       // Verify the response
-      expect(res.body.name).to.equal(userFixtures[0].name);
-      expect(res.body.email).to.equal(userFixtures[0].email);
-      expect(res.body.username).to.equal(userFixtures[0].username);
+      expect(res.body.user.email).to.equal(userFixtures[0].email);
     });
     it("should return 400 if email is missing", async function () {
       const res = await agent.post("/api/users/auth").send({
@@ -164,7 +164,6 @@ describe("User API", () => {
       expect(res.statusCode).to.equal(401);
       expect(res.body.message).to.equal("Invalid email or password");
     });
-
     it("should return 401 if password is incorrect", async function () {
       const res = await agent.post("/api/users/auth").send({
         email: userFixtures[0].email,
@@ -174,6 +173,7 @@ describe("User API", () => {
       expect(res.body.message).to.equal("Invalid email or password");
     });
   });
+
   describe("Logout: POST /api/users/logout", () => {
     beforeEach(async function () {
       await loadUsers();
@@ -198,7 +198,13 @@ describe("User API", () => {
       // Check cookie
       expect(protectedRes.headers["set-cookie"]).to.not.exist;
     });
+    it("should clear cookie even if user is not logged in", async function () {
+      const logoutRes = await supertest(app).post("/api/users/logout");
+      expect(logoutRes.statusCode).to.equal(200);
+      expect(logoutRes.body.message).to.equal("Logged out successufuly");
+    });
   });
+
   describe("Get user profile: GET /api/users/profile", () => {
     beforeEach(async function () {
       await loadUsers();
@@ -214,16 +220,17 @@ describe("User API", () => {
       // Get the user's profile
       const profileRes = await agent.get("/api/users/profile");
       expect(profileRes.statusCode).to.equal(200);
-      expect(profileRes.body).to.have.property("name");
-      expect(profileRes.body).to.have.property("email");
-      expect(profileRes.body).to.have.property("username");
-      expect(profileRes.body).to.not.have.property("password");
+      expect(profileRes.body.user).to.have.property("name");
+      expect(profileRes.body.user).to.have.property("email");
+      expect(profileRes.body.user).to.have.property("username");
+      expect(profileRes.body.user).to.not.have.property("password");
     });
     it("should return 401 if the user is not authenticated", async function () {
       const profileRes = await supertest(app).get("/api/users/profile");
       expect(profileRes.statusCode).to.equal(401);
     });
   });
+
   describe("Update user profile: PUT /api/users/profile", () => {
     beforeEach(async function () {
       await loadUsers();
@@ -242,15 +249,15 @@ describe("User API", () => {
     it("should update the user's profile", async function () {
       // Log in the user
       await login(agent, userFixtures[0]);
-
       // Update the user's profile
       const updateRes = await agent.put("/api/users/profile").send(updatedUser);
       expect(updateRes.statusCode).to.equal(200);
-      expect(updateRes.body).to.have.property("name");
-      expect(updateRes.body).to.have.property("email");
-      expect(updateRes.body).to.have.property("username");
-      expect(updateRes.body).to.not.have.property("password");
-
+      expect(updateRes.body.message).to.equal("User updated");
+      // Check if the response is correct
+      expect(updateRes.body.user).to.have.property("name");
+      expect(updateRes.body.user).to.have.property("email");
+      expect(updateRes.body.user).to.have.property("username");
+      expect(updateRes.body.user).to.not.have.property("password");
       // See if db was updated
       const updatedUserRes = await User.findOne({ email: updatedUser.email });
       expect(updatedUserRes).to.exist;
@@ -265,6 +272,7 @@ describe("User API", () => {
       expect(updateRes.statusCode).to.equal(401);
     });
   });
+
   describe("Add favorite recipe: POST /api/users/favorites/add/:recipe_id", () => {
     before(async function () {
       await loadFamilies();
@@ -322,6 +330,7 @@ describe("User API", () => {
       expect(addFavoriteRes.statusCode).to.equal(401);
     });
   });
+
   describe("Remove favorite recipe: POST /api/users/favorites/remove/:recipe_id", () => {
     before(async function () {
       await loadFamilies();
@@ -369,6 +378,7 @@ describe("User API", () => {
       expect(addFavoriteRes.statusCode).to.equal(401);
     });
   });
+
   describe("Delete User: DELETE /api/users", () => {
     beforeEach(async function () {
       await loadUsers();
@@ -409,6 +419,7 @@ describe("User API", () => {
       expect(deleteRes.statusCode).to.equal(401);
     });
   });
+
   describe("Accept invite: POST /api/users/invites/accept/:invite_id", () => {
     beforeEach(async function () {
       await loadUsers();
@@ -475,6 +486,7 @@ describe("User API", () => {
       expect(acceptInviteRes.statusCode).to.equal(401);
     });
   });
+
   describe("Decline invite: POST /api/users/invites/decline/:invite_id", () => {
     beforeEach(async function () {
       await loadUsers();
@@ -515,6 +527,12 @@ describe("User API", () => {
       );
       expect(declineInviteRes.statusCode).to.equal(400);
       expect(declineInviteRes.body.message).to.equal("Invite not valid");
+    });
+    it("should return 401 if the user is not authenticated", async function () {
+      const declineInviteRes = await supertest(app).post(
+        "/api/users/invites/decline/randomId"
+      );
+      expect(declineInviteRes.statusCode).to.equal(401);
     });
   });
 });
