@@ -3,6 +3,7 @@ import { expect } from "chai";
 import app from "../backend/server.js";
 import User from "../backend/models/userModel.js";
 import Recipe from "../backend/models/recipeModel.js";
+import Family from "../backend/models/familyModel.js";
 
 let agent;
 
@@ -437,6 +438,166 @@ describe("User API", () => {
         .post("/api/users/favorites/remove")
         .send({ recipeId });
       expect(addFavoriteRes.statusCode).to.equal(401);
+    });
+  });
+  describe("Delete User: DELETE /api/users", () => {
+    it("should delete the user", async function () {
+      // Create the user in the database
+      const newUser = {
+        name: "Test User 2",
+        email: "test2@example.com",
+        password: "password",
+        username: "testuser2",
+      };
+      await User.create(newUser);
+      // Log in the user
+      const loginRes = await agent.post("/api/users/auth").send({
+        email: newUser.email,
+        password: newUser.password,
+      });
+      expect(loginRes.statusCode).to.equal(200);
+      // Delete the user
+      const deleteRes = await agent.delete("/api/users");
+      expect(deleteRes.statusCode).to.equal(200);
+      // Check if the user was deleted from the database
+      const deletedUser = await User.findOne({ email: newUser.email });
+      expect(deletedUser).to.not.exist;
+      // Delete from the database
+      await User.deleteOne({ email: newUser.email });
+    });
+    it("should remove user from families", async function () {
+      // Create the user in the database
+      const newUser = {
+        name: "Test User 2",
+        email: "test2@example.com",
+        password: "password",
+        username: "testuser2",
+      };
+      await User.create(newUser);
+      // Log in the user
+      const loginRes = await agent.post("/api/users/auth").send({
+        email: newUser.email,
+        password: newUser.password,
+      });
+      expect(loginRes.statusCode).to.equal(200);
+      // Create a family in the database
+      const family = await Family.create({
+        name: "Test Family",
+        description: "Test Description",
+        creator_id: "66086312b25899e1bc2a8776",
+      });
+      // Add the user to the family
+      family.members.push({ user_id: newUser._id });
+      await family.save();
+      // Delete the user
+      const deleteRes = await agent.delete("/api/users");
+      expect(deleteRes.statusCode).to.equal(200);
+      // Check if the user was deleted from the database
+      const deletedUser = await User.findOne({ email: newUser.email });
+      expect(deletedUser).to.not.exist;
+      // Check if the user was removed from the family
+      const updatedFamily = await Family.findOne({ _id: family._id });
+      expect(updatedFamily.members).to.not.include(newUser._id);
+      // Delete from the database
+      await User.deleteOne({ email: newUser.email });
+      await Family.deleteOne({ _id: family._id });
+    });
+    it("should remove user invites from families", async function () {
+      // Create the user in the database
+      const newUser = {
+        name: "Test User 2",
+        email: "test2@example.com",
+        password: "password",
+        username: "testuser2",
+      };
+      await User.create(newUser);
+      // Log in the user
+      const loginRes = await agent.post("/api/users/auth").send({
+        email: newUser.email,
+        password: newUser.password,
+      });
+      expect(loginRes.statusCode).to.equal(200);
+      // Create a family in the database
+      const family = await Family.create({
+        name: "Test Family",
+        description: "Test Description",
+        creator_id: "66086312b25899e1bc2a8776",
+      });
+      // Add an invite
+      family.invites.push({ user_id: newUser._id });
+      await family.save();
+      // Delete the user
+      const deleteRes = await agent.delete("/api/users");
+      expect(deleteRes.statusCode).to.equal(200);
+      // Check if the user was deleted from the database
+      const deletedUser = await User.findOne({ email: newUser.email });
+      expect(deletedUser).to.not.exist;
+      // Check if the user invite was removed from the family
+      const updatedFamily = await Family.findOne({ _id: family._id });
+      expect(updatedFamily.invites).to.not.include(newUser._id);
+      // Delete from the database
+      await User.deleteOne({ email: newUser.email });
+      await Family.deleteOne({ _id: family._id });
+    });
+    it("should return 401 if the user is not authenticated", async function () {
+      const deleteRes = await supertest(app).delete("/api/users");
+      expect(deleteRes.statusCode).to.equal(401);
+    });
+  });
+  describe("Accept invite: POST /api/users/invites/accept", () => {
+    it("should accept the invite", async function () {
+      // Log in the user
+      const loginRes = await agent.post("/api/users/auth").send({
+        email: mockUser.email,
+        password: mockUser.password,
+      });
+      expect(loginRes.statusCode).to.equal(200);
+      // Get the user
+      const user = await User.findOne({ email: mockUser.email });
+      // Create a family in the database
+      const family = await Family.create({
+        name: "Test Family",
+        description: "Test Description",
+        creator_id: "66086312b25899e1bc2a8776",
+      });
+      // Create an invite in the family database
+      family.invites.push({ user_id: user._id });
+      await family.save();
+      // Create an invite in the user database
+      user.invites.push({
+        family_id: family._id,
+        inviter_id: "66086312b25899e1bc2a8776",
+      });
+      await user.save();
+      // Get the invite ID
+      const inviteId = user.invites[0]._id;
+      // Accept an invite
+      const acceptInviteRes = await agent
+        .post("/api/users/invites/accept")
+        .send({ inviteId });
+      expect(acceptInviteRes.statusCode).to.equal(200);
+      // Check if the invite was removed from the user's invites
+      const updatedUser = await User.findOne({ email: mockUser.email });
+      expect(updatedUser.invites).to.not.include(inviteId);
+      // Check if the user was added to the family and the invite was removed
+      const updatedFamily = await Family.findOne({ _id: family._id });
+      expect(updatedFamily.members).to.include(user._id);
+      expect(updatedFamily.invites).to.not.include(user._id);
+      //delete family from the database
+      await Family.deleteOne({ _id: family._id });
+    });
+
+    it("should return 401 if the user is not authenticated", async function () {
+      const inviteId = "some-invite-id"; // Replace with a valid invite ID
+      const acceptInviteRes = await supertest(app)
+        .post("/api/users/invites/accept")
+        .send({ inviteId });
+      expect(acceptInviteRes.statusCode).to.equal(401);
+    });
+
+    it("should return 400 if invite_id is missing", async function () {
+      const acceptInviteRes = await agent.post("/api/users/invites/accept");
+      expect(acceptInviteRes.statusCode).to.equal(400);
     });
   });
 });

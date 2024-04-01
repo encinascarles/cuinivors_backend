@@ -25,7 +25,7 @@ router
 router.post("/favorites/add", protect, addFavorite);
 router.post("/favorites/remove", protect, removeFavorite);
 router.delete("/", protect, deleteUser);
-router.post("/acceptinvite", protect, acceptInvite);
-router.post("/declineinvite", protect, declineInvite);
+router.post("/invites/accept", protect, acceptInvite);
+router.post("/invites/decline", protect, declineInvite);
 
 export default router;

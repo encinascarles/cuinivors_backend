@@ -2,6 +2,7 @@ import asyncHandler from "express-async-handler";
 import User from "../models/userModel.js";
 import generateToken from "../utils/generateToken.js";
 import Family from "../models/familyModel.js";
+import Recipe from "../models/recipeModel.js";
 
 // @desc    Auth user & get token
 // @route   POST /api/users/auth
@@ -192,7 +193,7 @@ const deleteUser = asyncHandler(async (req, res) => {
 });
 
 // @desc    Accept Invite
-// @route   PUSH /api/users/acceptinvite
+// @route   PUSH /api/users/invites/accept
 // @access  Private
 const acceptInvite = asyncHandler(async (req, res) => {
   const { invite_id } = req.body;
@@ -234,7 +235,7 @@ const acceptInvite = asyncHandler(async (req, res) => {
 });
 
 // @desc    Decline Invite
-// @route   PUSH /api/users/declineinvite
+// @route   PUSH /api/users/invites/decline
 // @access  Private
 const declineInvite = asyncHandler(async (req, res) => {
   const { invite_id } = req.body;
