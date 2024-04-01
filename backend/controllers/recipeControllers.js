@@ -7,21 +7,32 @@ import { uploadFileToBlob } from "../utils/uploadFileToBlob.js";
 // @route   POST /api/recipes
 // @access  Private
 const addRecipe = asyncHandler(async (req, res) => {
+  // Declare the variables
+  let name,
+    origin,
+    recommendations,
+    prep_time,
+    total_time,
+    ingredients,
+    steps,
+    is_private;
   // Get the data from the request
   try {
-    const { name, origin, recommendations } = req.body;
-    const prep_time = Number(req.body.prep_time);
-    const total_time = Number(req.body.total_time);
-    const ingredients = JSON.parse(req.body.ingredients);
-    const steps = JSON.parse(req.body.steps);
-    const is_private = JSON.parse(req.body.is_private);
+    name = req.body.name;
+    origin = req.body.origin;
+    recommendations = req.body.recommendations;
+    prep_time = Number(req.body.prep_time);
+    total_time = Number(req.body.total_time);
+    ingredients = JSON.parse(req.body.ingredients);
+    steps = JSON.parse(req.body.steps);
+    is_private = JSON.parse(req.body.is_private);
   } catch (error) {
     res.status(400);
     throw new Error("Invalid recipe data");
   }
   // Check if the user provided an image
   let imageUrl = "/images/default_recipe.jpg";
-  if (!req.file) {
+  if (req.file) {
     try {
       imageUrl = await uploadFileToBlob(req.file);
     } catch (error) {

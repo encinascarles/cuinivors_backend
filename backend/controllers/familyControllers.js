@@ -222,6 +222,14 @@ const leaveFamily = asyncHandler(async (req, res) => {
   res.json({ message: "Left family" });
 });
 
+// @desc    Get user families
+// @route   GET /api/families/
+// @access  Private
+const getUserFamilies = asyncHandler(async (req, res) => {
+  const families = await Family.find({ "members.user_id": req.user._id });
+  res.json(families);
+});
+
 export {
   createFamily,
   getFamilyById,
@@ -231,4 +239,5 @@ export {
   deleteFamily,
   removeMember,
   leaveFamily,
+  getUserFamilies,
 };

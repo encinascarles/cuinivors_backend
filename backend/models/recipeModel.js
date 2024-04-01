@@ -37,7 +37,8 @@ const recipeSchema = mongoose.Schema(
     },
     image: {
       type: String,
-      required: false,
+      required: true,
+      default: "https://via.placeholder.com/150",
     },
     is_private: {
       type: Boolean,

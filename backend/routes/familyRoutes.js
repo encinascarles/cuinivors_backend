@@ -10,6 +10,7 @@ import {
   deleteFamily,
   removeMember,
   leaveFamily,
+  getUserFamilies,
 } from "../controllers/familyControllers.js";
 import { familyAdmin, familyUser } from "../middleware/familyMiddleware.js";
 
@@ -31,5 +32,6 @@ router.post("/removeinvite/:family_id", protect, familyAdmin, removeInvite);
 router.delete("/:family_id", protect, familyAdmin, deleteFamily);
 router.post("/removemember/:family_id", protect, familyAdmin, removeMember);
 router.post("/leave/:family_id", protect, familyUser, leaveFamily);
+router.get("/", protect, getUserFamilies);
 
 export default router;

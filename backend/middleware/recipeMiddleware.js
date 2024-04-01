@@ -40,7 +40,7 @@ const recipeFamilyAuthorized = asyncHandler(async (req, res, next) => {
       }
       // Look if user is in a common family with creator
       const family = await Family.findOne({
-        members: { $all: [recipe.creator_id, req.user._id] },
+        "members.user_id": { $all: [recipe.creator_id, req.user._id] },
       });
       if (family) {
         req.recipe = recipe;

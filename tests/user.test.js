@@ -4,6 +4,30 @@ import app from "../backend/server.js";
 import User from "../backend/models/userModel.js";
 import Recipe from "../backend/models/recipeModel.js";
 import Family from "../backend/models/familyModel.js";
+import {
+  loadUsers,
+  loadFamilies,
+  loadRecipes,
+  clearUsers,
+  clearFamilies,
+  clearRecipes,
+} from "./fixtures/loadFixtures.js";
+import {
+  userFixtures,
+  familyFixtures,
+  recipeFixtures,
+} from "./fixtures/mockDataDB.js";
+
+const login = async (agent, user) => {
+  const res = await agent
+    .post("/api/users/auth")
+    .send({ email: user.email, password: user.password });
+  // Check if the response is successful
+  expect(res.statusCode).to.equal(200);
+  // Check cookie
+  expect(res.headers["set-cookie"]).to.exist;
+  return res;
+};
 
 let agent;
 
@@ -12,184 +36,163 @@ beforeEach(() => {
 });
 
 describe("User API", () => {
-  // Create a new user in the database
-  const mockUser = {
-    name: "Test User",
-    email: "test@example.com",
-    password: "password",
-    username: "testuser",
-  };
-  before(async function () {
-    await User.create(mockUser);
-  });
-  after(async () => {
-    await User.deleteOne({ username: mockUser.username });
-  });
   describe("Register new user: POST /api/users", () => {
+    beforeEach(async function () {
+      await loadUsers();
+    });
+    afterEach(async function () {
+      await clearUsers();
+    });
+
+    const newUser = {
+      name: "New User",
+      email: "new@example.com",
+      password: "password",
+      username: "newuser",
+    };
+
     it("should create a new user and verify it was added to the database", async function () {
-      const newUser = {
-        name: "Test User 2",
-        email: "test2@example.com",
-        password: "password",
-        username: "testuser2",
-      };
-
+      // Create the user
       const res = await agent.post("/api/users").send(newUser);
-
       expect(res.statusCode).to.equal(201);
       // Verify the response
       expect(res.body.name).to.equal(newUser.name);
       expect(res.body.email).to.equal(newUser.email);
       expect(res.body.username).to.equal(newUser.username);
-
-      // Fetch the user from the database
-      const userInDb = await User.findOne({ username: newUser.username });
-
+      //changetodo: change it to provide a message and then the user
       // Verify the user was added to the database
+      const userInDb = await User.findOne({ username: newUser.username });
       expect(userInDb).to.exist;
       expect(userInDb.name).to.equal(newUser.name);
       expect(userInDb.email).to.equal(newUser.email);
       expect(userInDb.username).to.equal(newUser.username);
-
-      //delete the user from the database
-      await User.deleteOne({ username: newUser.username });
+      // Verify the cookie was set
+      expect(res.headers["set-cookie"]).to.exist;
     });
+
     it("should return 400 (User already exists with this email) if email already exists", async function () {
       const res = await agent.post("/api/users").send({
-        name: "Test User 2",
-        email: "test@example.com",
-        password: "password",
-        username: "testuser2",
+        name: newUser.name,
+        email: userFixtures[0].email,
+        password: newUser.password,
+        username: newUser.username,
       });
       expect(res.statusCode).to.equal(400);
       expect(res.body.message).to.equal("User already exists with this email");
     });
     it("should return 400 (Username already taken) if username already exists", async function () {
-      // Attempt to create the user again
       const res = await agent.post("/api/users").send({
-        name: "Test User 2",
-        email: "test2@example.com",
-        password: "password",
-        username: "testuser",
+        name: newUser.name,
+        email: newUser.email,
+        password: newUser.password,
+        username: userFixtures[0].username,
       });
       expect(res.statusCode).to.equal(400);
       expect(res.body.message).to.equal("Username already taken");
     });
     it("should return 400 if name is missing", async function () {
-      const newUser = {
-        email: "test@example.com",
-        password: "password",
-        username: "testuser",
-      };
-
-      const res = await agent.post("/api/users").send(newUser);
+      const res = await agent.post("/api/users").send({
+        email: newUser.email,
+        password: newUser.password,
+        username: newUser.username,
+      });
       expect(res.statusCode).to.equal(400);
+      //changetodo: change it to provide a message
     });
     it("should return 400 if email is missing", async function () {
-      const newUser = {
-        name: "Test User",
-        password: "password",
-        username: "testuser",
-      };
-
-      const res = await agent.post("/api/users").send(newUser);
+      const res = await agent.post("/api/users").send({
+        name: newUser.name,
+        password: newUser.password,
+        username: newUser.username,
+      });
       expect(res.statusCode).to.equal(400);
+      //changetodo: change it to provide a message
     });
     it("should return 400 if password is missing", async function () {
-      const newUser = {
-        name: "Test User",
-        email: "test@example.com",
-        username: "testuser",
-      };
-
-      const res = await agent.post("/api/users").send(newUser);
+      const res = await agent.post("/api/users").send({
+        name: newUser.name,
+        email: newUser.email,
+        username: newUser.username,
+      });
       expect(res.statusCode).to.equal(400);
+      //changetodo: change it to provide a message
     });
     it("should return 400 if username is missing", async function () {
-      const newUser = {
-        name: "Test User",
-        email: "test@example.com",
-        password: "password",
-      };
-
-      const res = await agent.post("/api/users").send(newUser);
+      const res = await agent.post("/api/users").send({
+        name: newUser.name,
+        email: newUser.email,
+        password: newUser.password,
+      });
       expect(res.statusCode).to.equal(400);
+      //changetodo: change it to provide a message
     });
   });
   describe("Login: POST /api/users/login", () => {
+    beforeEach(async function () {
+      await loadUsers();
+    });
+    afterEach(async function () {
+      await clearUsers();
+    });
     it("should login user and return user object and cookie", async function () {
-      const res = await agent.post("/api/users/auth").send({
-        email: mockUser.email,
-        password: mockUser.password,
-      });
-
-      expect(res.statusCode).to.equal(200);
+      //login the user
+      const res = await login(agent, userFixtures[0]);
       // Verify the response
-      expect(res.body.name).to.equal(mockUser.name);
-      expect(res.body.email).to.equal(mockUser.email);
-      expect(res.body.username).to.equal(mockUser.username);
-
-      // Verify the cookie
-      expect(res.headers["set-cookie"]).to.exist;
+      expect(res.body.name).to.equal(userFixtures[0].name);
+      expect(res.body.email).to.equal(userFixtures[0].email);
+      expect(res.body.username).to.equal(userFixtures[0].username);
     });
     it("should return 400 if email is missing", async function () {
       const res = await agent.post("/api/users/auth").send({
-        password: "password",
+        password: userFixtures[0].password,
       });
-
       expect(res.statusCode).to.equal(400);
       expect(res.body.message).to.equal("Not valid data");
     });
-
     it("should return 400 if password is missing", async function () {
       const res = await agent.post("/api/users/auth").send({
-        email: "test@example.com",
+        email: userFixtures[0].email,
       });
-
       expect(res.statusCode).to.equal(400);
       expect(res.body.message).to.equal("Not valid data");
     });
-
     it("should return 401 if email is incorrect", async function () {
       const res = await agent.post("/api/users/auth").send({
         email: "incorrect@example.com",
-        password: "password",
+        password: userFixtures[0].password,
       });
-
       expect(res.statusCode).to.equal(401);
       expect(res.body.message).to.equal("Invalid email or password");
     });
 
     it("should return 401 if password is incorrect", async function () {
       const res = await agent.post("/api/users/auth").send({
-        email: "test@example.com",
+        email: userFixtures[0].email,
         password: "incorrect",
       });
-
       expect(res.statusCode).to.equal(401);
       expect(res.body.message).to.equal("Invalid email or password");
     });
   });
   describe("Logout: POST /api/users/logout", () => {
+    beforeEach(async function () {
+      await loadUsers();
+    });
+    afterEach(async function () {
+      await clearUsers();
+    });
+
     it("should logout the user and clear the session", async function () {
       // Login
-      const loginRes = await agent.post("/api/users/auth").send({
-        email: mockUser.email,
-        password: mockUser.password,
-      });
-      expect(loginRes.statusCode).to.equal(200);
-
-      // Check cookie
-      expect(loginRes.headers["set-cookie"]).to.exist;
+      await login(agent, userFixtures[0]);
 
       // Logout
       const logoutRes = await agent.post("/api/users/logout");
       expect(logoutRes.statusCode).to.equal(200);
+      expect(logoutRes.body.message).to.equal("Logged out successufuly");
 
       // Try to access a route that requires authentication
       const protectedRes = await agent.get("/api/users/profile");
-
-      // You should get a 401 error because the user is no longer authenticated
       expect(protectedRes.statusCode).to.equal(401);
 
       // Check cookie
@@ -197,13 +200,16 @@ describe("User API", () => {
     });
   });
   describe("Get user profile: GET /api/users/profile", () => {
+    beforeEach(async function () {
+      await loadUsers();
+    });
+    afterEach(async function () {
+      await clearUsers();
+    });
+
     it("should return the user's profile", async function () {
       // Log in the user
-      const loginRes = await agent.post("/api/users/auth").send({
-        email: mockUser.email,
-        password: mockUser.password,
-      });
-      expect(loginRes.statusCode).to.equal(200);
+      await login(agent, userFixtures[0]);
 
       // Get the user's profile
       const profileRes = await agent.get("/api/users/profile");
@@ -211,7 +217,7 @@ describe("User API", () => {
       expect(profileRes.body).to.have.property("name");
       expect(profileRes.body).to.have.property("email");
       expect(profileRes.body).to.have.property("username");
-      expect(profileRes.body).to.have.property("invites");
+      expect(profileRes.body).to.not.have.property("password");
     });
     it("should return 401 if the user is not authenticated", async function () {
       const profileRes = await supertest(app).get("/api/users/profile");
@@ -219,385 +225,296 @@ describe("User API", () => {
     });
   });
   describe("Update user profile: PUT /api/users/profile", () => {
+    beforeEach(async function () {
+      await loadUsers();
+    });
+    afterEach(async function () {
+      await clearUsers();
+    });
+
+    const updatedUser = {
+      name: "Updated Name",
+      email: "updated@example.com",
+      username: "updateduser",
+      password: "updatedpassword",
+    };
+
     it("should update the user's profile", async function () {
-      // Create the user in the database
-      const newUser = {
-        name: "Test User 2",
-        email: "test2@example.com",
-        password: "password",
-        username: "testuser2",
-      };
-      await User.create(newUser);
       // Log in the user
-      const loginRes = await agent.post("/api/users/auth").send({
-        email: newUser.email,
-        password: newUser.password,
-      });
-      expect(loginRes.statusCode).to.equal(200);
+      await login(agent, userFixtures[0]);
 
       // Update the user's profile
-      const updateRes = await agent.put("/api/users/profile").send({
-        name: "Updated Name",
-        email: "updated@example.com",
-      });
+      const updateRes = await agent.put("/api/users/profile").send(updatedUser);
       expect(updateRes.statusCode).to.equal(200);
       expect(updateRes.body).to.have.property("name");
       expect(updateRes.body).to.have.property("email");
+      expect(updateRes.body).to.have.property("username");
+      expect(updateRes.body).to.not.have.property("password");
 
       // See if db was updated
-      const updatedUser = await User.findOne({ email: "updated@example.com" });
-      expect(updatedUser).to.exist;
-      expect(updatedUser.name).to.equal("Updated Name");
-      expect(updatedUser.email).to.equal("updated@example.com");
-
-      //delete the user from the database
-      await User.deleteOne({ email: "updated@example.com" });
+      const updatedUserRes = await User.findOne({ email: updatedUser.email });
+      expect(updatedUserRes).to.exist;
+      expect(updatedUserRes.name).to.equal(updatedUser.name);
+      expect(updatedUserRes.email).to.equal(updatedUser.email);
+      expect(updatedUserRes.username).to.equal(updatedUser.username);
     });
-
     it("should return 401 if the user is not authenticated", async function () {
-      const updateRes = await supertest(app).put("/api/users/profile").send({
-        name: "Updated Name",
-        email: "updated@example.com",
-      });
+      const updateRes = await supertest(app)
+        .put("/api/users/profile")
+        .send(updatedUser);
       expect(updateRes.statusCode).to.equal(401);
     });
   });
-  describe("Add favorite recipe: POST /api/users/favorites/add", () => {
-    beforeEach(async function () {
-      // Log in the user
-      const loginRes = await agent.post("/api/users/auth").send({
-        email: mockUser.email,
-        password: mockUser.password,
-      });
-      expect(loginRes.statusCode).to.equal(200);
+  describe("Add favorite recipe: POST /api/users/favorites/add/:recipe_id", () => {
+    before(async function () {
+      await loadFamilies();
     });
-    it("should add a recipe to the user's favorites", async function () {
-      //Get the user's id
-      const user = await User.findOne({ email: mockUser.email });
+    after(async function () {
+      await clearFamilies();
+    });
+    beforeEach(async function () {
+      await loadUsers();
+      await loadRecipes();
+      await login(agent, userFixtures[0]);
+    });
+    afterEach(async function () {
+      await clearUsers();
+      await clearRecipes();
+    });
 
-      // Add a recipe to the database
-      const recipe = await Recipe.create({
-        name: "Test Recipe",
-        description: "Test Description",
-        ingredients: ["Test Ingredient 1", "Test Ingredient 2"],
-        directions: ["Test Direction 1", "Test Direction 2"],
-        category: "Test Category",
-        prep_time: 10,
-        total_time: 20,
-        servings: 4,
-        creator_id: user._id,
-      });
+    it("should add a recipe to the user's favorites", async function () {
       // Add a recipe to the user's favorites
-      const recipeId = recipe._id; // Replace with a valid recipe ID
-      const addFavoriteRes = await agent
-        .post("/api/users/favorites/add")
-        .send({ recipe_id: recipeId });
+      const addFavoriteRes = await agent.post(
+        `/api/users/favorites/add/${recipeFixtures[3]._id.toString()}`
+      );
+      expect(addFavoriteRes.body.message).to.equal("Recipe added to favorites");
       expect(addFavoriteRes.statusCode).to.equal(201);
       // Check if the recipe was added to the user's favorites
-      const updatedUser = await User.findOne({ email: mockUser.email });
-      expect(updatedUser.favorites).to.include(recipeId);
-      //delete from the database
-      await Recipe.deleteOne({ _id: recipeId });
-      User.updateOne(
-        { email: mockUser.email },
-        { $pull: { favorites: recipeId } }
-      );
-    });
-    it("should return 400 if recipe_id is missing", async function () {
-      const addFavoriteRes = await agent.post("/api/users/favorites/add");
-      expect(addFavoriteRes.statusCode).to.equal(400);
+      const updatedUser = await User.findOne({ email: userFixtures[0].email });
+      expect(updatedUser.favorites).to.include(recipeFixtures[3]._id);
     });
     it("should return 400 if recipe is already in favorites", async function () {
-      //Get the user's id
-      const user = await User.findOne({ email: mockUser.email });
-      //Add a recipe to the database
-      const recipe = await Recipe.create({
-        name: "Test Recipe",
-        description: "Test Description",
-        ingredients: ["Test Ingredient 1", "Test Ingredient 2"],
-        directions: ["Test Direction 1", "Test Direction 2"],
-        category: "Test Category",
-        prep_time: 10,
-        total_time: 20,
-        servings: 4,
-        creator_id: user._id,
-      });
-      // Add the recipe to the user's favorites using the database
-      await User.updateOne(
-        { email: mockUser.email },
-        { $push: { favorites: recipe._id } }
-      );
       // Try to add the recipe to the user's favorites
-      const addFavoriteRes = await agent
-        .post("/api/users/favorites/add")
-        .send({ recipe_id: recipe._id });
+      const addFavoriteRes = await agent.post(
+        `/api/users/favorites/add/${recipeFixtures[0]._id.toString()}`
+      );
       expect(addFavoriteRes.statusCode).to.equal(400);
       expect(addFavoriteRes.body.message).to.equal(
         "Recipe already in favorites"
       );
-      //delete from the database
-      await Recipe.deleteOne({ _id: recipe._id });
-      User.updateOne(
-        { email: mockUser.email },
-        { $pull: { favorites: recipe._id } }
-      );
-    });
-    it("should return 400 if recipe_id is missing", async function () {
-      const addFavoriteRes = await agent.post("/api/users/favorites/add");
-      expect(addFavoriteRes.statusCode).to.equal(400);
     });
     it("should return 401 if the user is not authenticated", async function () {
-      const recipeId = "some-recipe-id"; // Replace with a valid recipe ID
-      const addFavoriteRes = await supertest(app)
-        .post("/api/users/favorites/add")
-        .send({ recipeId });
+      const addFavoriteRes = await supertest(app).post(
+        `/api/users/favorites/add/${recipeFixtures[1]._id.toString()}`
+      );
+      expect(addFavoriteRes.statusCode).to.equal(401);
+    });
+    it("should return 404 if recipe doesn't exist", async function () {
+      const addFavoriteRes = await agent.post(
+        `/api/users/favorites/add/invalidId`
+      );
+      expect(addFavoriteRes.statusCode).to.equal(404);
+    });
+    it("should return 401 if the user shouldn't have access to the recipe", async function () {
+      const addFavoriteRes = await agent.post(
+        `/api/users/favorites/add/${recipeFixtures[2]._id.toString()}`
+      );
       expect(addFavoriteRes.statusCode).to.equal(401);
     });
   });
-  describe("Remove favorite recipe: POST /api/users/favorites/remove", () => {
+  describe("Remove favorite recipe: POST /api/users/favorites/remove/:recipe_id", () => {
+    before(async function () {
+      await loadFamilies();
+    });
+    after(async function () {
+      await clearFamilies();
+    });
     beforeEach(async function () {
-      // Log in the user
-      const loginRes = await agent.post("/api/users/auth").send({
-        email: mockUser.email,
-        password: mockUser.password,
-      });
-      expect(loginRes.statusCode).to.equal(200);
+      await loadUsers();
+      await loadRecipes();
+      await login(agent, userFixtures[0]);
+    });
+    afterEach(async function () {
+      await clearUsers();
+      await clearRecipes();
+    });
+
+    beforeEach(async function () {
+      await login(agent, userFixtures[0]);
     });
     it("should remove a recipe to the user's favorites", async function () {
-      //Get the user's id
-      const user = await User.findOne({ email: mockUser.email });
-
-      // Add a recipe to the database
-      const recipe = await Recipe.create({
-        name: "Test Recipe",
-        description: "Test Description",
-        ingredients: ["Test Ingredient 1", "Test Ingredient 2"],
-        directions: ["Test Direction 1", "Test Direction 2"],
-        category: "Test Category",
-        prep_time: 10,
-        total_time: 20,
-        servings: 4,
-        creator_id: user._id,
-      });
-      // Add the recipe to the user's favorites using the database
-      await User.updateOne(
-        { email: mockUser.email },
-        { $push: { favorites: recipe._id } }
+      // Remove to the user's favorites
+      const removeFavoriteRes = await agent.post(
+        `/api/users/favorites/remove/${recipeFixtures[0]._id.toString()}`
       );
-      // Remove the recipe to the user's favorites
-      const recipeId = recipe._id;
-      const addFavoriteRes = await agent
-        .post("/api/users/favorites/remove")
-        .send({ recipe_id: recipeId });
-      expect(addFavoriteRes.statusCode).to.equal(201);
-      // Check if the recipe was removed to the user's favorites
-      const updatedUser = await User.findOne({ email: mockUser.email });
-      expect(updatedUser.favorites).to.not.include(recipeId);
-      //delete from the database
-      await Recipe.deleteOne({ _id: recipeId });
-      User.updateOne(
-        { email: mockUser.email },
-        { $pull: { favorites: recipeId } }
+      expect(removeFavoriteRes.statusCode).to.equal(201);
+      // Check if the recipe was removed from the user's favorites
+      const updatedUser = await User.findOne({ email: userFixtures[0].email });
+      expect(updatedUser.favorites).to.not.include(
+        recipeFixtures[0]._id.toString()
       );
-    });
-    it("should return 400 if recipe_id is missing", async function () {
-      const addFavoriteRes = await agent.post("/api/users/favorites/remove");
-      expect(addFavoriteRes.statusCode).to.equal(400);
     });
     it("should return 400 if recipe is not in favorites", async function () {
-      //Get the user's id
-      const user = await User.findOne({ email: mockUser.email });
-      //Add a recipe to the database
-      const recipe = await Recipe.create({
-        name: "Test Recipe",
-        description: "Test Description",
-        ingredients: ["Test Ingredient 1", "Test Ingredient 2"],
-        directions: ["Test Direction 1", "Test Direction 2"],
-        category: "Test Category",
-        prep_time: 10,
-        total_time: 20,
-        servings: 4,
-        creator_id: user._id,
-      });
-      // Try to remove the recipe from the user's favorites
-      const addFavoriteRes = await agent
-        .post("/api/users/favorites/remove")
-        .send({ recipe_id: recipe._id });
+      // Remove to the user's favorites
+      const addFavoriteRes = await agent.post(
+        `/api/users/favorites/remove/${recipeFixtures[3]._id.toString()}`
+      );
       expect(addFavoriteRes.statusCode).to.equal(400);
       expect(addFavoriteRes.body.message).to.equal("Recipe not in favorites");
-      //delete from the database
-      await Recipe.deleteOne({ _id: recipe._id });
-    });
-    it("should return 400 if recipe_id is missing", async function () {
-      const addFavoriteRes = await agent.post("/api/users/favorites/remove");
-      expect(addFavoriteRes.statusCode).to.equal(400);
     });
     it("should return 401 if the user is not authenticated", async function () {
-      const recipeId = "some-recipe-id"; // Replace with a valid recipe ID
-      const addFavoriteRes = await supertest(app)
-        .post("/api/users/favorites/remove")
-        .send({ recipeId });
+      const addFavoriteRes = await supertest(app).post(
+        `/api/users/favorites/remove/${recipeFixtures[0]._id.toString()}`
+      );
       expect(addFavoriteRes.statusCode).to.equal(401);
     });
   });
   describe("Delete User: DELETE /api/users", () => {
-    it("should delete the user", async function () {
-      // Create the user in the database
-      const newUser = {
-        name: "Test User 2",
-        email: "test2@example.com",
-        password: "password",
-        username: "testuser2",
-      };
-      await User.create(newUser);
-      // Log in the user
-      const loginRes = await agent.post("/api/users/auth").send({
-        email: newUser.email,
-        password: newUser.password,
-      });
-      expect(loginRes.statusCode).to.equal(200);
-      // Delete the user
-      const deleteRes = await agent.delete("/api/users");
-      expect(deleteRes.statusCode).to.equal(200);
-      // Check if the user was deleted from the database
-      const deletedUser = await User.findOne({ email: newUser.email });
-      expect(deletedUser).to.not.exist;
-      // Delete from the database
-      await User.deleteOne({ email: newUser.email });
+    beforeEach(async function () {
+      await loadUsers();
+      await loadFamilies();
+      await login(agent, userFixtures[0]);
     });
-    it("should remove user from families", async function () {
-      // Create the user in the database
-      const newUser = {
-        name: "Test User 2",
-        email: "test2@example.com",
-        password: "password",
-        username: "testuser2",
-      };
-      await User.create(newUser);
-      // Log in the user
-      const loginRes = await agent.post("/api/users/auth").send({
-        email: newUser.email,
-        password: newUser.password,
-      });
-      expect(loginRes.statusCode).to.equal(200);
-      // Create a family in the database
-      const family = await Family.create({
-        name: "Test Family",
-        description: "Test Description",
-        creator_id: "66086312b25899e1bc2a8776",
-      });
-      // Add the user to the family
-      family.members.push({ user_id: newUser._id });
-      await family.save();
+    afterEach(async function () {
+      await clearUsers();
+      await clearFamilies();
+    });
+    it("should delete the user, remove it from families, if last admin delete the family, delete the recipes and remove user invites from families", async function () {
       // Delete the user
       const deleteRes = await agent.delete("/api/users");
       expect(deleteRes.statusCode).to.equal(200);
       // Check if the user was deleted from the database
-      const deletedUser = await User.findOne({ email: newUser.email });
+      const deletedUser = await User.findOne({ email: userFixtures[0].email });
       expect(deletedUser).to.not.exist;
       // Check if the user was removed from the family
-      const updatedFamily = await Family.findOne({ _id: family._id });
-      expect(updatedFamily.members).to.not.include(newUser._id);
-      // Delete from the database
-      await User.deleteOne({ email: newUser.email });
-      await Family.deleteOne({ _id: family._id });
-    });
-    it("should remove user invites from families", async function () {
-      // Create the user in the database
-      const newUser = {
-        name: "Test User 2",
-        email: "test2@example.com",
-        password: "password",
-        username: "testuser2",
-      };
-      await User.create(newUser);
-      // Log in the user
-      const loginRes = await agent.post("/api/users/auth").send({
-        email: newUser.email,
-        password: newUser.password,
+      const updatedFamily = await Family.findOne({
+        _id: familyFixtures[1]._id,
       });
-      expect(loginRes.statusCode).to.equal(200);
-      // Create a family in the database
-      const family = await Family.create({
-        name: "Test Family",
-        description: "Test Description",
-        creator_id: "66086312b25899e1bc2a8776",
+      expect(updatedFamily.members).to.not.include(userFixtures[1]._id);
+      // Check if the user invites were removed from the families
+      expect(updatedFamily.invites).to.not.include(userFixtures[0]._id);
+      // Check if the family with last admin was deleted
+      const deletedFamily = await Family.findOne({
+        _id: familyFixtures[0]._id,
       });
-      // Add an invite
-      family.invites.push({ user_id: newUser._id });
-      await family.save();
-      // Delete the user
-      const deleteRes = await agent.delete("/api/users");
-      expect(deleteRes.statusCode).to.equal(200);
-      // Check if the user was deleted from the database
-      const deletedUser = await User.findOne({ email: newUser.email });
-      expect(deletedUser).to.not.exist;
-      // Check if the user invite was removed from the family
-      const updatedFamily = await Family.findOne({ _id: family._id });
-      expect(updatedFamily.invites).to.not.include(newUser._id);
-      // Delete from the database
-      await User.deleteOne({ email: newUser.email });
-      await Family.deleteOne({ _id: family._id });
+      expect(deletedFamily).to.not.exist;
+      // Check if the user recipes were deleted
+      const deletedRecipes = await Recipe.find({
+        creator_id: userFixtures[0]._id,
+      });
+      expect(deletedRecipes).to.have.lengthOf(0);
     });
     it("should return 401 if the user is not authenticated", async function () {
       const deleteRes = await supertest(app).delete("/api/users");
       expect(deleteRes.statusCode).to.equal(401);
     });
   });
-  describe("Accept invite: POST /api/users/invites/accept", () => {
+  describe("Accept invite: POST /api/users/invites/accept/:invite_id", () => {
+    beforeEach(async function () {
+      await loadUsers();
+      await loadFamilies();
+      await login(agent, userFixtures[2]);
+    });
+    afterEach(async function () {
+      await clearUsers();
+      await clearFamilies();
+    });
+
     it("should accept the invite", async function () {
-      // Log in the user
-      const loginRes = await agent.post("/api/users/auth").send({
-        email: mockUser.email,
-        password: mockUser.password,
-      });
-      expect(loginRes.statusCode).to.equal(200);
-      // Get the user
-      const user = await User.findOne({ email: mockUser.email });
-      // Create a family in the database
-      const family = await Family.create({
-        name: "Test Family",
-        description: "Test Description",
-        creator_id: "66086312b25899e1bc2a8776",
-      });
-      // Create an invite in the family database
-      family.invites.push({ user_id: user._id });
-      await family.save();
-      // Create an invite in the user database
-      user.invites.push({
-        family_id: family._id,
-        inviter_id: "66086312b25899e1bc2a8776",
-      });
-      await user.save();
-      // Get the invite ID
+      const user = await User.findOne({ email: userFixtures[2].email });
       const inviteId = user.invites[0]._id;
       // Accept an invite
-      const acceptInviteRes = await agent
-        .post("/api/users/invites/accept")
-        .send({ inviteId });
-      expect(acceptInviteRes.statusCode).to.equal(200);
+      const acceptInviteRes = await agent.post(
+        `/api/users/invites/accept/${inviteId}`
+      );
+      expect(acceptInviteRes.statusCode).to.equal(201);
+      expect(acceptInviteRes.body.message).to.equal("Invite accepted");
       // Check if the invite was removed from the user's invites
-      const updatedUser = await User.findOne({ email: mockUser.email });
+      const updatedUser = await User.findOne({ email: userFixtures[2].email });
       expect(updatedUser.invites).to.not.include(inviteId);
       // Check if the user was added to the family and the invite was removed
-      const updatedFamily = await Family.findOne({ _id: family._id });
-      expect(updatedFamily.members).to.include(user._id);
-      expect(updatedFamily.invites).to.not.include(user._id);
-      //delete family from the database
-      await Family.deleteOne({ _id: family._id });
+      const updatedFamily = await Family.findOne({
+        _id: familyFixtures[0]._id,
+      });
+      expect(
+        updatedFamily.members.some(
+          (member) => member.user_id.toString() === user._id.toString()
+        )
+      ).to.be.true;
+      expect(updatedFamily.invites).to.not.include(user._id.toString());
     });
-
+    it("should return 400 if invite_id is incorrect", async function () {
+      const acceptInviteRes = await agent.post(
+        "/api/users/invites/accept/invalidId"
+      );
+      expect(acceptInviteRes.statusCode).to.equal(400);
+    });
+    it("should return 400 if invite is not in family invites, and delete user invite", async function () {
+      const user = await User.findOne({ email: userFixtures[2].email });
+      const inviteId = user.invites[0]._id;
+      // Delete invite from family db
+      const updatedFamily = await Family.findOne({
+        _id: familyFixtures[0]._id,
+      });
+      updatedFamily.invites = [];
+      await updatedFamily.save();
+      // Accept an invite
+      const acceptInviteRes = await agent.post(
+        `/api/users/invites/accept/${inviteId}`
+      );
+      expect(acceptInviteRes.statusCode).to.equal(400);
+      // Check if the invite was removed from the user's invites
+      const updatedUser = await User.findOne({ email: userFixtures[2].email });
+      expect(updatedUser.invites).to.not.include(inviteId);
+    });
     it("should return 401 if the user is not authenticated", async function () {
       const inviteId = "some-invite-id"; // Replace with a valid invite ID
-      const acceptInviteRes = await supertest(app)
-        .post("/api/users/invites/accept")
-        .send({ inviteId });
+      const acceptInviteRes = await supertest(app).post(
+        "/api/users/invites/accept/randomId"
+      );
       expect(acceptInviteRes.statusCode).to.equal(401);
     });
+  });
+  describe("Decline invite: POST /api/users/invites/decline/:invite_id", () => {
+    beforeEach(async function () {
+      await loadUsers();
+      await loadFamilies();
+      await login(agent, userFixtures[2]);
+    });
+    afterEach(async function () {
+      await clearUsers();
+      await clearFamilies();
+    });
 
-    it("should return 400 if invite_id is missing", async function () {
-      const acceptInviteRes = await agent.post("/api/users/invites/accept");
-      expect(acceptInviteRes.statusCode).to.equal(400);
+    it("should decline the invite", async function () {
+      const user = await User.findOne({ email: userFixtures[2].email });
+      const inviteId = user.invites[0]._id;
+      // Decline an invite
+      const declineInviteRes = await agent.post(
+        `/api/users/invites/decline/${inviteId}`
+      );
+      expect(declineInviteRes.statusCode).to.equal(201);
+      expect(declineInviteRes.body.message).to.equal("Invite declined");
+      // Check if the invite was removed from the user's invites
+      const updatedUser = await User.findOne({ email: userFixtures[2].email });
+      expect(updatedUser.invites).to.not.include(inviteId);
+      // Check if the user was not added to the family
+      const updatedFamily = await Family.findOne({
+        _id: familyFixtures[0]._id,
+      });
+      expect(
+        updatedFamily.members.some(
+          (member) => member.user_id.toString() === user._id.toString()
+        )
+      ).to.be.false;
+      expect(updatedFamily.invites).to.not.include(user._id.toString());
+    });
+    it("should return 400 if invite_id is incorrect", async function () {
+      const declineInviteRes = await agent.post(
+        "/api/users/invites/decline/invalidId"
+      );
+      expect(declineInviteRes.statusCode).to.equal(400);
+      expect(declineInviteRes.body.message).to.equal("Invite not valid");
     });
   });
 });

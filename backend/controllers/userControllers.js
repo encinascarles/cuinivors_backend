@@ -121,22 +121,16 @@ const updateUserProfile = asyncHandler(async (req, res) => {
 });
 
 // @desc    Add favorite recipe
-// @route   POST /api/users/favorites/add
-// @access  Private
+// @route   POST /api/users/favorites/add/:recipe_id
+// @access  Private, recipeFamilyAuthorized
 const addFavorite = asyncHandler(async (req, res) => {
-  const { recipe_id } = req.body;
-  //check if user provided with correct data
-  if (!recipe_id) {
-    res.status(400);
-    throw new Error("Not valid data");
-  }
   //check if recipe is already in favorites
-  if (req.user.favorites.includes(recipe_id)) {
+  if (req.user.favorites.includes(req.recipe._id)) {
     res.status(400);
     throw new Error("Recipe already in favorites");
   }
   //add recipe to favorites
-  req.user.favorites.push(recipe_id);
+  req.user.favorites.push(req.recipe._id);
   const updatedUser = await req.user.save();
   res.status(201).json({
     message: "Recipe added to favorites",
@@ -144,23 +138,17 @@ const addFavorite = asyncHandler(async (req, res) => {
 });
 
 // @desc    Remove favorite recipe
-// @route   POST /api/users/favorites/remove
+// @route   POST /api/users/favorites/remove/:recipe_id
 // @access  Private
 const removeFavorite = asyncHandler(async (req, res) => {
-  const { recipe_id } = req.body;
-  //check if user provided with correct data
-  if (!recipe_id) {
-    res.status(400);
-    throw new Error("Not valid data");
-  }
   //check if recipe is in favorites
-  if (!req.user.favorites.includes(recipe_id)) {
+  if (!req.user.favorites.includes(req.recipe._id)) {
     res.status(400);
     throw new Error("Recipe not in favorites");
   }
   //remove recipe from favorites
   req.user.favorites = req.user.favorites.filter(
-    (favorite) => favorite.toString() !== recipe_id
+    (favorite) => favorite.toString() !== req.recipe._id.toString()
   );
   //save updated user data
   const updatedUser = await req.user.save();
@@ -177,9 +165,34 @@ const deleteUser = asyncHandler(async (req, res) => {
   await Recipe.deleteMany({ creator_id: req.user._id });
   //delete invites
   await Family.updateMany(
-    { "members.user_id": req.user._id },
-    { $pull: { members: { user_id: req.user._id } } }
+    { invites: req.user._id },
+    { $pull: { invites: req.user._id } }
   );
+  //delete user from families, if user is last admin, delete family
+  const families = await Family.find({ "members.user_id": req.user._id });
+  for (let family of families) {
+    const member = family.members.find(
+      (member) => member.user_id.toString() === req.user._id.toString()
+    );
+    if (member.admin) {
+      const otherAdmins = family.members.filter(
+        (m) => m.user_id.toString() !== req.user._id.toString() && m.admin
+      );
+      if (otherAdmins.length === 0) {
+        await Family.findByIdAndDelete(family._id);
+      } else {
+        family.members = family.members.filter(
+          (member) => member.user_id.toString() !== req.user._id.toString()
+        );
+        await family.save();
+      }
+    } else {
+      family.members = family.members.filter(
+        (member) => member.user_id.toString() !== req.user._id.toString()
+      );
+      await family.save();
+    }
+  }
   //delete user
   const user = await User.findByIdAndDelete(req.user._id);
   if (user) {
@@ -193,15 +206,10 @@ const deleteUser = asyncHandler(async (req, res) => {
 });
 
 // @desc    Accept Invite
-// @route   PUSH /api/users/invites/accept
+// @route   PUSH /api/users/invites/accept/:invite_id
 // @access  Private
 const acceptInvite = asyncHandler(async (req, res) => {
-  const { invite_id } = req.body;
-  //check if user provided with correct data
-  if (!invite_id) {
-    res.status(400);
-    throw new Error("Not valid data");
-  }
+  const { invite_id } = req.params;
   //check if user has invite
   if (!req.user.invites.some((invite) => invite._id.toString() === invite_id)) {
     res.status(400);
@@ -211,13 +219,23 @@ const acceptInvite = asyncHandler(async (req, res) => {
   const { family_id } = req.user.invites.find(
     (invite) => invite._id.toString() === invite_id.toString()
   );
+  //check if family has invite
+  const family = await Family.findById(family_id);
+  if (!family.invites.includes(req.user._id)) {
+    //delete invite from user
+    req.user.invites = req.user.invites.filter(
+      (invite) => invite._id.toString() !== invite_id
+    );
+    await req.user.save();
+    res.status(400);
+    throw new Error("Invite not valid");
+  }
   //remove invite from user model
   req.user.invites = req.user.invites.filter(
     (invite) => invite._id.toString() !== invite_id
   );
-  const updatedUser = await req.user.save();
+  await req.user.save();
   //add user to family and remove invite from family model
-  const family = await Family.findById(family_id);
   if (family) {
     family.members.push({ user_id: req.user._id });
     family.invites = family.invites.filter(
@@ -235,15 +253,10 @@ const acceptInvite = asyncHandler(async (req, res) => {
 });
 
 // @desc    Decline Invite
-// @route   PUSH /api/users/invites/decline
+// @route   PUSH /api/users/invites/decline/:invite_id
 // @access  Private
 const declineInvite = asyncHandler(async (req, res) => {
-  const { invite_id } = req.body;
-  //check if user provided with correct data
-  if (!invite_id) {
-    res.status(400);
-    throw new Error("Not valid data");
-  }
+  const { invite_id } = req.params;
   //check if user has invite
   if (
     !req.user.invites.some(
@@ -251,7 +264,7 @@ const declineInvite = asyncHandler(async (req, res) => {
     )
   ) {
     res.status(400);
-    throw new Error("User has no invite");
+    throw new Error("Invite not valid");
   }
   //find family id
   const { family_id } = req.user.invites.find(
