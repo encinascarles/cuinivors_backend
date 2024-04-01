@@ -9,7 +9,7 @@
     "server": "nodemon backend/server.js",
     "client": "npm run dev --prefix frontend",
     "dev": "concurrently \"npm run server\" \"npm run client\"",
-    "test": "NODE_ENV=test mocha --timeout 20000 --require @babel/register tests/*.test.js"
+    "test": "NODE_ENV=test mocha --require @babel/register tests/*.test.js"
   },
   "author": "Carles Encinas Turro",
   "license": "MIT",
