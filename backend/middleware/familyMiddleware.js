@@ -12,7 +12,7 @@ const familyAdmin = asyncHandler(async (req, res, next) => {
       req.family_admin = true;
       next();
     } else {
-      res.status(401);
+      res.status(403);
       throw new Error("Not authorized as an admin");
     }
   } else {
@@ -32,7 +32,7 @@ const familyUser = asyncHandler(async (req, res, next) => {
       req.family_admin = user.admin;
       next();
     } else {
-      res.status(401);
+      res.status(403);
       throw new Error("Not authorized as a member of this family");
     }
   } else {

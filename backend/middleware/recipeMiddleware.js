@@ -35,7 +35,7 @@ const recipeFamilyAuthorized = asyncHandler(async (req, res, next) => {
     } else {
       // Check if recipe is private
       if (recipe.is_private) {
-        res.status(401);
+        res.status(403);
         throw new Error("Private recipe. Not authorized as recipe owner");
       }
       // Look if user is in a common family with creator
@@ -46,7 +46,7 @@ const recipeFamilyAuthorized = asyncHandler(async (req, res, next) => {
         req.recipe = recipe;
         next();
       } else {
-        res.status(401);
+        res.status(403);
         throw new Error("Not authorized as recipe owner or family member");
       }
     }

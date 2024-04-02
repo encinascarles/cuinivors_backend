@@ -323,11 +323,11 @@ describe("User API", () => {
       );
       expect(addFavoriteRes.statusCode).to.equal(404);
     });
-    it("should return 401 if the user shouldn't have access to the recipe", async function () {
+    it("should return 403 if the user shouldn't have access to the recipe", async function () {
       const addFavoriteRes = await agent.post(
         `/api/users/favorites/add/${recipeFixtures[2]._id.toString()}`
       );
-      expect(addFavoriteRes.statusCode).to.equal(401);
+      expect(addFavoriteRes.statusCode).to.equal(403);
     });
   });
 
@@ -356,7 +356,7 @@ describe("User API", () => {
       const removeFavoriteRes = await agent.post(
         `/api/users/favorites/remove/${recipeFixtures[0]._id.toString()}`
       );
-      expect(removeFavoriteRes.statusCode).to.equal(201);
+      expect(removeFavoriteRes.statusCode).to.equal(200);
       // Check if the recipe was removed from the user's favorites
       const updatedUser = await User.findOne({ email: userFixtures[0].email });
       expect(updatedUser.favorites).to.not.include(
@@ -438,7 +438,7 @@ describe("User API", () => {
       const acceptInviteRes = await agent.post(
         `/api/users/invites/accept/${inviteId}`
       );
-      expect(acceptInviteRes.statusCode).to.equal(201);
+      expect(acceptInviteRes.statusCode).to.equal(200);
       expect(acceptInviteRes.body.message).to.equal("Invite accepted");
       // Check if the invite was removed from the user's invites
       const updatedUser = await User.findOne({ email: userFixtures[2].email });
@@ -505,7 +505,7 @@ describe("User API", () => {
       const declineInviteRes = await agent.post(
         `/api/users/invites/decline/${inviteId}`
       );
-      expect(declineInviteRes.statusCode).to.equal(201);
+      expect(declineInviteRes.statusCode).to.equal(200);
       expect(declineInviteRes.body.message).to.equal("Invite declined");
       // Check if the invite was removed from the user's invites
       const updatedUser = await User.findOne({ email: userFixtures[2].email });

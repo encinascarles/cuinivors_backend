@@ -19,7 +19,7 @@ const authUser = asyncHandler(async (req, res) => {
   if (user && (await user.matchPassword(password))) {
     //return user data and token
     generateToken(res, user._id);
-    res.json({
+    res.status().json({
       message: "User logged in",
       user: {
         name: user.name,
@@ -97,7 +97,7 @@ const logoutUser = (req, res) => {
 // @route   GET /api/users/profile
 // @access  Private
 const getUserProfile = asyncHandler(async (req, res) => {
-  res.json({
+  res.status(200).json({
     user: {
       name: req.user.name,
       email: req.user.email,
@@ -120,7 +120,7 @@ const updateUserProfile = asyncHandler(async (req, res) => {
   }
   const updatedUser = await req.user.save();
   //return updated user data
-  res.json({
+  res.status(200).json({
     message: "User updated",
     user: {
       name: updatedUser.name,
@@ -163,7 +163,7 @@ const removeFavorite = asyncHandler(async (req, res) => {
   );
   //save updated user data
   const updatedUser = await req.user.save();
-  res.status(201).json({
+  res.status(200).json({
     message: "Recipe removed from favorites",
   });
 });
@@ -254,7 +254,7 @@ const acceptInvite = asyncHandler(async (req, res) => {
     );
     await family.save();
     //return success message
-    res.status(201).json({
+    res.status(200).json({
       message: "Invite accepted",
     });
   } else {
@@ -294,7 +294,7 @@ const declineInvite = asyncHandler(async (req, res) => {
     );
     await family.save();
     //return success message
-    res.status(201).json({
+    res.status(200).json({
       message: "Invite declined",
     });
   }
