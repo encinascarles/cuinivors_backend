@@ -1,7 +1,13 @@
 import User from "../../backend/models/userModel.js";
 import Family from "../../backend/models/familyModel.js";
 import Recipe from "../../backend/models/recipeModel.js";
-import { userFixtures, familyFixtures, recipeFixtures } from "./mockDataDB.js";
+import Invite from "../../backend/models/inviteModel.js";
+import {
+  userFixtures,
+  familyFixtures,
+  recipeFixtures,
+  inviteFixtures,
+} from "./mockDataDB.js";
 
 const loadUsers = async () => {
   try {
@@ -33,10 +39,21 @@ const loadRecipes = async () => {
   }
 };
 
+const loadInvites = async () => {
+  try {
+    for (const invite of inviteFixtures) {
+      await Invite.create(invite);
+    }
+  } catch (error) {
+    console.error("Error loading invites fixtures:", error);
+  }
+};
+
 const loadFixtures = async () => {
   await loadUsers();
   await loadFamilies();
   await loadRecipes();
+  await loadInvites();
 };
 
 const clearUsers = async () => {
@@ -63,12 +80,30 @@ const clearRecipes = async () => {
   }
 };
 
-export default loadFixtures;
+const clearInvites = async () => {
+  try {
+    await Invite.deleteMany();
+  } catch (error) {
+    console.error("Error clearing invites fixtures:", error);
+  }
+};
+
+const clearFixtures = async () => {
+  await clearUsers();
+  await clearFamilies();
+  await clearRecipes();
+  await clearInvites();
+};
+
 export {
   loadUsers,
   loadFamilies,
   loadRecipes,
+  loadInvites,
+  loadFixtures,
   clearUsers,
   clearFamilies,
   clearRecipes,
+  clearInvites,
+  clearFixtures,
 };

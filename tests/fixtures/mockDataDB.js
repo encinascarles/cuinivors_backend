@@ -13,34 +13,35 @@ const recipe2Id = new mongoose.Types.ObjectId();
 const recipe3Id = new mongoose.Types.ObjectId();
 const recipe4Id = new mongoose.Types.ObjectId();
 
+const invite1Id = new mongoose.Types.ObjectId();
+
 const userFixtures = [
   {
     _id: user1Id,
     name: "User 1",
+    username: "user1",
     email: "user1@example.com",
     password: "password1",
-    username: "user1",
+    profile_image: "/images/users/user1.jpg",
     favorites: [recipe1Id],
   },
   {
     _id: user2Id,
     name: "User 2",
+    username: "user2",
     email: "user2@example.com",
     password: "password2",
-    username: "user2",
+    profile_image: "/images/users/user2.jpg",
+    favorites: [],
   },
   {
     _id: user3Id,
     name: "User 3",
+    username: "user3",
     email: "user3@example.com",
     password: "password3",
-    username: "user3",
-    invites: [
-      {
-        family_id: family1Id,
-        inviter_id: user1Id,
-      },
-    ],
+    profile_image: "/images/users/user3.jpg",
+    favorites: [],
   },
 ];
 
@@ -48,45 +49,26 @@ const familyFixtures = [
   {
     _id: family1Id,
     name: "Family 1",
-    members: [
-      {
-        user_id: user1Id,
-        admin: true,
-      },
-      {
-        user_id: user2Id,
-        admin: false,
-      },
-    ],
-    invites: [user3Id],
+    description: "Family 1 description",
+    family_image: "/images/families/family1.jpg",
+    members: [user1Id, user2Id],
+    admins: [user1Id],
   },
   {
     _id: family2Id,
     name: "Family 2",
-    members: [
-      {
-        user_id: user2Id,
-        admin: true,
-      },
-      {
-        user_id: user1Id,
-        admin: false,
-      },
-    ],
+    description: "Family 2 description",
+    family_image: "/images/families/family2.jpg",
+    members: [user1Id, user2Id],
+    admins: [user2Id],
   },
   {
     _id: family3Id,
     name: "Family 3",
-    members: [
-      {
-        user_id: user3Id,
-        admin: true,
-      },
-      {
-        user_id: user2Id,
-        admin: false,
-      },
-    ],
+    description: "Family 3 description",
+    family_image: "/images/families/family3.jpg",
+    members: [user2Id, user3Id],
+    admins: [user3Id],
   },
 ];
 
@@ -94,51 +76,64 @@ const recipeFixtures = [
   {
     _id: recipe1Id,
     name: "Recipe 1",
-    creator_id: user1Id,
     prep_time: 10,
     total_time: 20,
     ingredients: ["ingredient1", "ingredient2"],
     steps: ["instruction1", "instruction2"],
     recommendations: "recommendation",
     origin: "origin",
-    is_private: false,
+    recipe_image: "/images/recipes/recipe1.jpg",
+    visibility: "family",
+    author_id: user1Id,
   },
   {
     _id: recipe2Id,
     name: "Recipe 2",
-    creator_id: user2Id,
     prep_time: 10,
     total_time: 20,
     ingredients: ["ingredient1", "ingredient2"],
     steps: ["instruction1", "instruction2"],
     recommendations: "recommendation",
     origin: "origin",
-    is_private: true,
+    recipe_image: "/images/recipes/recipe2.jpg",
+    visibility: "private",
+    author_id: user2Id,
   },
   {
     _id: recipe3Id,
     name: "Recipe 3",
-    creator_id: user3Id,
     prep_time: 10,
     total_time: 20,
     ingredients: ["ingredient1", "ingredient2"],
     steps: ["instruction1", "instruction2"],
     recommendations: "recommendation",
     origin: "origin",
-    is_private: false,
+    recipe_image: "/images/recipes/recipe3.jpg",
+    visibility: "family",
+    author_id: user3Id,
   },
   {
     _id: recipe4Id,
     name: "Recipe 4",
-    creator_id: user2Id,
     prep_time: 10,
     total_time: 20,
     ingredients: ["ingredient1", "ingredient2"],
     steps: ["instruction1", "instruction2"],
     recommendations: "recommendation",
     origin: "origin",
-    is_private: false,
+    recipe_image: "/images/recipes/recipe4.jpg",
+    visibility: "public",
+    author_id: user2Id,
   },
 ];
 
-export { userFixtures, familyFixtures, recipeFixtures };
+const inviteFixtures = [
+  {
+    _id: invite1Id,
+    inviter_user_id: user1Id,
+    invited_user_id: user3Id,
+    family_id: family1Id,
+  },
+];
+
+export { userFixtures, familyFixtures, recipeFixtures, inviteFixtures };

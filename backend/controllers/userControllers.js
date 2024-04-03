@@ -3,6 +3,55 @@ import User from "../models/userModel.js";
 import generateToken from "../utils/generateToken.js";
 import Family from "../models/familyModel.js";
 import Recipe from "../models/recipeModel.js";
+import Invite from "../models/inviteModel.js";
+
+// @desc    Register a new user
+// @route   POST /api/users/register
+// @access  Public
+const registerUser = asyncHandler(async (req, res) => {
+  const { name, username, email, password } = req.body;
+  //check if user provided with correct data
+  if (!name || !username || !email || !password) {
+    res.status(400);
+    throw new Error("Not valid data");
+  }
+  //check if email already exists
+  const userExists = await User.findOne({ email });
+  if (userExists) {
+    res.status(400);
+    throw new Error("User already exists with this email");
+  }
+  //check if username already exists
+  const usernameExists = await User.findOne({ username });
+  if (usernameExists) {
+    res.status(400);
+    throw new Error("User already exists with this username");
+  }
+  //create new user
+  const user = await User.create({
+    name,
+    email,
+    password,
+    username,
+  });
+  //return user data and token
+  if (user) {
+    generateToken(res, user._id);
+    res.status(201).json({
+      message: "User created",
+      user: {
+        _id: user._id,
+        name: user.name,
+        email: user.email,
+        username: user.username,
+        profile_image: user.profile_image,
+      },
+    });
+  } else {
+    res.status(400);
+    throw new Error("Invalid user data");
+  }
+});
 
 // @desc    Auth user & get token
 // @route   POST /api/users/auth
@@ -19,65 +68,19 @@ const authUser = asyncHandler(async (req, res) => {
   if (user && (await user.matchPassword(password))) {
     //return user data and token
     generateToken(res, user._id);
-    res.status().json({
+    res.status(200).json({
       message: "User logged in",
       user: {
+        _id: user._id,
         name: user.name,
         email: user.email,
         username: user.username,
-        invites: user.invites,
+        profile_image: user.profile_image,
       },
     });
   } else {
     res.status(401);
     throw new Error("Invalid email or password");
-  }
-});
-
-// @desc    Register a new user
-// @route   POST /api/users
-// @access  Public
-const registerUser = asyncHandler(async (req, res) => {
-  const { name, email, password, username } = req.body;
-  //check if user provided with correct data
-  if (!name || !email || !password || !username) {
-    res.status(400);
-    throw new Error("Not valid data");
-  }
-  //check if user already exists
-  const userExists = await User.findOne({ email });
-  if (userExists) {
-    res.status(400);
-    throw new Error("User already exists with this email");
-  }
-  //check if username is already taken
-  const usernameExists = await User.findOne({ username });
-  if (usernameExists) {
-    res.status(400);
-    throw new Error("Username already taken");
-  }
-  //create new user
-  const user = await User.create({
-    name,
-    email,
-    password,
-    username,
-  });
-  //return user data and token
-  if (user) {
-    generateToken(res, user._id);
-    res.status(201).json({
-      message: "User created",
-      user: {
-        name: user.name,
-        email: user.email,
-        username: user.username,
-        invites: user.invites,
-      },
-    });
-  } else {
-    res.status(400);
-    throw new Error("Invalid user data");
   }
 });
 
@@ -90,7 +93,7 @@ const logoutUser = (req, res) => {
     httpOnly: true,
     expires: new Date(0),
   });
-  res.status(200).json({ message: "Logged out successufuly" });
+  res.status(200).json({ message: "Logged out successfully" });
 };
 
 // @desc    Get user profile
@@ -99,10 +102,11 @@ const logoutUser = (req, res) => {
 const getUserProfile = asyncHandler(async (req, res) => {
   res.status(200).json({
     user: {
+      _id: req.user._id,
       name: req.user.name,
       email: req.user.email,
       username: req.user.username,
-      invites: req.user.invites,
+      profile_image: req.user.profile_image,
     },
   });
 });
@@ -110,6 +114,7 @@ const getUserProfile = asyncHandler(async (req, res) => {
 // @desc    Update user profile
 // @route   PUT /api/users/profile
 // @access  Private
+//todo implement image upload
 const updateUserProfile = asyncHandler(async (req, res) => {
   //update user data
   req.user.name = req.body.name || req.user.name;
@@ -123,49 +128,50 @@ const updateUserProfile = asyncHandler(async (req, res) => {
   res.status(200).json({
     message: "User updated",
     user: {
-      name: updatedUser.name,
-      email: updatedUser.email,
-      username: updatedUser.username,
-      invites: updatedUser.invites,
+      _id: req.user._id,
+      name: req.user.name,
+      email: req.user.email,
+      username: req.user.username,
+      profile_image: req.user.profile_image,
     },
   });
 });
 
-// @desc    Add favorite recipe
-// @route   POST /api/users/favorites/add/:recipe_id
-// @access  Private, recipeFamilyAuthorized
-const addFavorite = asyncHandler(async (req, res) => {
-  //check if recipe is already in favorites
-  if (req.user.favorites.includes(req.recipe._id)) {
-    res.status(400);
-    throw new Error("Recipe already in favorites");
+// @desc    Get user profile by ID
+// @route   GET /api/users/profile/:user_id
+// @access  Public
+const getUserProfileById = asyncHandler(async (req, res) => {
+  const user = await User.findById(req.params.user_id);
+  if (user) {
+    res.status(200).json({
+      user: {
+        _id: user._id,
+        name: user.name,
+        email: user.email,
+        username: user.username,
+        profile_image: user.profile_image,
+      },
+    });
+  } else {
+    res.status(404);
+    throw new Error("User not found");
   }
-  //add recipe to favorites
-  req.user.favorites.push(req.recipe._id);
-  const updatedUser = await req.user.save();
-  res.status(201).json({
-    message: "Recipe added to favorites",
-  });
 });
 
-// @desc    Remove favorite recipe
-// @route   POST /api/users/favorites/remove/:recipe_id
+// @desc    List user families
+// @route   GET /api/users/families
 // @access  Private
-const removeFavorite = asyncHandler(async (req, res) => {
-  //check if recipe is in favorites
-  if (!req.user.favorites.includes(req.recipe._id)) {
-    res.status(400);
-    throw new Error("Recipe not in favorites");
-  }
-  //remove recipe from favorites
-  req.user.favorites = req.user.favorites.filter(
-    (favorite) => favorite.toString() !== req.recipe._id.toString()
-  );
-  //save updated user data
-  const updatedUser = await req.user.save();
-  res.status(200).json({
-    message: "Recipe removed from favorites",
-  });
+const getUserFamilies = asyncHandler(async (req, res) => {
+  const families = await Family.find({ members: req.user._id });
+  res.status(200).json({ families });
+});
+
+// @desc    List user recipes
+// @route   GET /api/users/recipes
+// @access  Private
+const getUserRecipes = asyncHandler(async (req, res) => {
+  const recipes = await Recipe.find({ author_id: req.user._id });
+  res.status(200).json({ recipes });
 });
 
 // @desc    Delete User
@@ -173,33 +179,25 @@ const removeFavorite = asyncHandler(async (req, res) => {
 // @access  Private
 const deleteUser = asyncHandler(async (req, res) => {
   //delete user recipes
-  await Recipe.deleteMany({ creator_id: req.user._id });
-  //delete invites
-  await Family.updateMany(
-    { invites: req.user._id },
-    { $pull: { invites: req.user._id } }
-  );
+  await Recipe.deleteMany({ author_id: req.user._id });
+  //delete invites where user is invited or inviter
+  await Invite.deleteMany({
+    $or: [{ invited_user_id: req.user._id }, { inviter_user_id: req.user._id }],
+  });
   //delete user from families, if user is last admin, delete family
-  const families = await Family.find({ "members.user_id": req.user._id });
+  const families = await Family.find({ members: req.user._id });
   for (let family of families) {
-    const member = family.members.find(
-      (member) => member.user_id.toString() === req.user._id.toString()
-    );
-    if (member.admin) {
-      const otherAdmins = family.members.filter(
-        (m) => m.user_id.toString() !== req.user._id.toString() && m.admin
-      );
-      if (otherAdmins.length === 0) {
-        await Family.findByIdAndDelete(family._id);
-      } else {
-        family.members = family.members.filter(
-          (member) => member.user_id.toString() !== req.user._id.toString()
-        );
-        await family.save();
-      }
+    if (
+      family.admins.length === 1 &&
+      family.admins[0].toString() === req.user._id.toString()
+    ) {
+      await Family.findByIdAndDelete(family._id);
     } else {
       family.members = family.members.filter(
-        (member) => member.user_id.toString() !== req.user._id.toString()
+        (member) => member.toString() !== req.user._id.toString()
+      );
+      family.admins = family.admins.filter(
+        (admin) => admin.toString() !== req.user._id.toString()
       );
       await family.save();
     }
@@ -216,99 +214,14 @@ const deleteUser = asyncHandler(async (req, res) => {
   }
 });
 
-// @desc    Accept Invite
-// @route   PUSH /api/users/invites/accept/:invite_id
-// @access  Private
-const acceptInvite = asyncHandler(async (req, res) => {
-  const { invite_id } = req.params;
-  //check if user has invite
-  if (!req.user.invites.some((invite) => invite._id.toString() === invite_id)) {
-    res.status(400);
-    throw new Error("Invite not  valid");
-  }
-  //find family id
-  const { family_id } = req.user.invites.find(
-    (invite) => invite._id.toString() === invite_id.toString()
-  );
-  //check if family has invite
-  const family = await Family.findById(family_id);
-  if (!family.invites.includes(req.user._id)) {
-    //delete invite from user
-    req.user.invites = req.user.invites.filter(
-      (invite) => invite._id.toString() !== invite_id
-    );
-    await req.user.save();
-    res.status(400);
-    throw new Error("Invite not valid");
-  }
-  //remove invite from user model
-  req.user.invites = req.user.invites.filter(
-    (invite) => invite._id.toString() !== invite_id
-  );
-  await req.user.save();
-  //add user to family and remove invite from family model
-  if (family) {
-    family.members.push({ user_id: req.user._id });
-    family.invites = family.invites.filter(
-      (invite) => invite.toString() !== req.user._id.toString()
-    );
-    await family.save();
-    //return success message
-    res.status(200).json({
-      message: "Invite accepted",
-    });
-  } else {
-    res.status(404);
-    throw new Error("Family not found");
-  }
-});
-
-// @desc    Decline Invite
-// @route   PUSH /api/users/invites/decline/:invite_id
-// @access  Private
-const declineInvite = asyncHandler(async (req, res) => {
-  const { invite_id } = req.params;
-  //check if user has invite
-  if (
-    !req.user.invites.some(
-      (invite) => invite._id.toString() === invite_id.toString()
-    )
-  ) {
-    res.status(400);
-    throw new Error("Invite not valid");
-  }
-  //find family id
-  const { family_id } = req.user.invites.find(
-    (invite) => invite._id.toString() === invite_id.toString()
-  );
-  //remove invite from user model
-  req.user.invites = req.user.invites.filter(
-    (invite) => invite._id.toString() !== invite_id.toString()
-  );
-  const updatedUser = await req.user.save();
-  //remove invite from family model
-  const family = await Family.findById(family_id);
-  if (family) {
-    family.invites = family.invites.filter(
-      (invite) => invite.toString() !== req.user._id.toString()
-    );
-    await family.save();
-    //return success message
-    res.status(200).json({
-      message: "Invite declined",
-    });
-  }
-});
-
 export {
-  authUser,
   registerUser,
+  authUser,
   logoutUser,
   getUserProfile,
+  getUserProfileById,
+  getUserFamilies,
+  getUserRecipes,
   updateUserProfile,
-  addFavorite,
-  removeFavorite,
   deleteUser,
-  acceptInvite,
-  declineInvite,
 };

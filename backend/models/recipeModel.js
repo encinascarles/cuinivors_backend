@@ -2,11 +2,6 @@ import mongoose from "mongoose";
 
 const recipeSchema = mongoose.Schema(
   {
-    creator_id: {
-      type: mongoose.Schema.Types.ObjectId,
-      ref: "User",
-      required: true,
-    },
     name: {
       type: String,
       required: true,
@@ -35,15 +30,21 @@ const recipeSchema = mongoose.Schema(
       type: String,
       required: false,
     },
-    image: {
+    recipe_image: {
       type: String,
       required: true,
-      default: "https://via.placeholder.com/150",
+      default: "/images/recipes/default.jpg",
     },
-    is_private: {
-      type: Boolean,
+    visibility: {
+      type: String,
+      enum: ["private", "public", "family"],
       required: true,
-      default: false,
+      default: "family",
+    },
+    author_id: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "User",
+      required: true,
     },
   },
   {

@@ -7,6 +7,11 @@ const userSchema = mongoose.Schema(
       type: String,
       required: true,
     },
+    username: {
+      type: String,
+      required: true,
+      unique: true,
+    },
     email: {
       type: String,
       required: true,
@@ -16,25 +21,11 @@ const userSchema = mongoose.Schema(
       type: String,
       required: true,
     },
-    username: {
+    profile_image: {
       type: String,
+      default: "/images/profiles/default.jpg",
       required: true,
-      unique: true,
     },
-    invites: [
-      {
-        family_id: {
-          type: mongoose.Schema.Types.ObjectId,
-          required: true,
-          ref: "Family",
-        },
-        inviter_id: {
-          type: mongoose.Schema.Types.ObjectId,
-          required: true,
-          ref: "User",
-        },
-      },
-    ],
     favorites: [
       {
         type: mongoose.Schema.Types.ObjectId,

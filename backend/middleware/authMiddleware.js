@@ -10,7 +10,7 @@ const protect = asyncHandler(async (req, res, next) => {
       //verify token (decode it)
       const decoded = jwt.verify(token, process.env.JWT_SECRET);
       //find user by id and remove password from response
-      req.user = await User.findById(decoded.userId).select("-password");
+      req.user = await User.findById(decoded.user_id).select("-password");
       //check if user exists
       if (!req.user) {
         res.status(404);

@@ -11,23 +11,17 @@ const familySchema = mongoose.Schema(
       type: String,
       required: false,
     },
-    image: {
+    family_image: {
       type: String,
       required: false,
     },
     members: [
       {
-        user_id: {
-          type: mongoose.Schema.Types.ObjectId,
-          ref: "User",
-        },
-        admin: {
-          type: Boolean,
-          default: false,
-        },
+        type: mongoose.Schema.Types.ObjectId,
+        ref: "User",
       },
     ],
-    invites: [
+    admins: [
       {
         type: mongoose.Schema.Types.ObjectId,
         ref: "User",
