@@ -5,12 +5,14 @@ import {
   createFamily,
   getFamilyById,
   modifyFamily,
-  addInvite,
-  removeInvite,
-  deleteFamily,
+  listMembers,
   removeMember,
+  listRecipes,
+  listAllFamiliesRecipes,
   leaveFamily,
-  getUserFamilies,
+  addAdmin,
+  removeAdmin,
+  deleteFamily,
 } from "../controllers/familyControllers.js";
 import { familyAdmin, familyUser } from "../middleware/familyMiddleware.js";
 
@@ -18,20 +20,22 @@ const upload = multer({ storage: multer.memoryStorage() });
 
 const router = express.Router();
 
-router.post("/", protect, upload.single("image"), createFamily);
-router.get("/:family_id", protect, familyUser, getFamilyById);
-router.put(
-  "/:family_id",
-  protect,
-  familyAdmin,
-  upload.single("image"),
-  modifyFamily
-);
-router.post("/addinvite/:family_id", protect, familyAdmin, addInvite);
-router.post("/removeinvite/:family_id", protect, familyAdmin, removeInvite);
-router.delete("/:family_id", protect, familyAdmin, deleteFamily);
-router.post("/removemember/:family_id", protect, familyAdmin, removeMember);
-router.post("/leave/:family_id", protect, familyUser, leaveFamily);
-router.get("/", protect, getUserFamilies);
+router.route("/").post(protect, createFamily);
+router.route("/recipes").get(protect, listAllFamiliesRecipes);
+router.route("/:family_id").get(protect, familyUser, getFamilyById);
+router
+  .route("/:family_id")
+  .put(protect, familyAdmin, modifyFamily)
+  .delete(protect, familyAdmin, deleteFamily);
+router.route("/:family_id/members").get(protect, familyUser, listMembers);
+router
+  .route("/:family_id/members/:user_id")
+  .delete(protect, familyAdmin, removeMember);
+router.route("/:family_id/recipes").get(protect, familyUser, listRecipes);
+router.route("/:family_id/leave").delete(protect, familyUser, leaveFamily);
+router
+  .route("/:family_id/admins/:user_id")
+  .post(protect, familyAdmin, addAdmin)
+  .delete(protect, familyAdmin, removeAdmin);
 
 export default router;

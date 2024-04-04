@@ -4,12 +4,11 @@ import Family from "../models/familyModel.js";
 const familyAdmin = asyncHandler(async (req, res, next) => {
   const family = await Family.findById(req.params.family_id);
   if (family) {
-    const user = family.members.find(
-      (member) => member.user_id.toString() === req.user._id.toString()
+    const user_admin = family.admins.find(
+      (admin) => admin.toString() === req.user._id.toString()
     );
-    if (user && user.admin) {
+    if (user_admin) {
       req.family = family;
-      req.family_admin = true;
       next();
     } else {
       res.status(403);

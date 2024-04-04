@@ -3,17 +3,21 @@ import mongoose from "mongoose";
 const user1Id = new mongoose.Types.ObjectId();
 const user2Id = new mongoose.Types.ObjectId();
 const user3Id = new mongoose.Types.ObjectId();
+const user4Id = new mongoose.Types.ObjectId();
 
 const family1Id = new mongoose.Types.ObjectId();
 const family2Id = new mongoose.Types.ObjectId();
 const family3Id = new mongoose.Types.ObjectId();
+const family4Id = new mongoose.Types.ObjectId();
 
 const recipe1Id = new mongoose.Types.ObjectId();
 const recipe2Id = new mongoose.Types.ObjectId();
 const recipe3Id = new mongoose.Types.ObjectId();
 const recipe4Id = new mongoose.Types.ObjectId();
+const recipe5Id = new mongoose.Types.ObjectId();
 
 const invite1Id = new mongoose.Types.ObjectId();
+const invite2Id = new mongoose.Types.ObjectId();
 
 const userFixtures = [
   {
@@ -43,6 +47,15 @@ const userFixtures = [
     profile_image: "/images/users/user3.jpg",
     favorites: [],
   },
+  {
+    _id: user4Id,
+    name: "User 4",
+    username: "user4",
+    email: "user4@example.com",
+    password: "password4",
+    profile_image: "/images/users/user4.jpg",
+    favorites: [],
+  },
 ];
 
 const familyFixtures = [
@@ -69,6 +82,14 @@ const familyFixtures = [
     family_image: "/images/families/family3.jpg",
     members: [user2Id, user3Id],
     admins: [user3Id],
+  },
+  {
+    _id: family4Id,
+    name: "Family 4",
+    description: "Family 4 description",
+    family_image: "/images/families/family4.jpg",
+    members: [user1Id, user4Id],
+    admins: [user4Id, user1Id],
   },
 ];
 
@@ -125,6 +146,19 @@ const recipeFixtures = [
     visibility: "public",
     author_id: user2Id,
   },
+  {
+    _id: recipe5Id,
+    name: "Recipe 5",
+    prep_time: 10,
+    total_time: 20,
+    ingredients: ["ingredient1", "ingredient2"],
+    steps: ["instruction1", "instruction2"],
+    recommendations: "recommendation",
+    origin: "origin",
+    recipe_image: "/images/recipes/recipe5.jpg",
+    visibility: "public",
+    author_id: user4Id,
+  },
 ];
 
 const inviteFixtures = [
@@ -133,6 +167,12 @@ const inviteFixtures = [
     inviter_user_id: user1Id,
     invited_user_id: user3Id,
     family_id: family1Id,
+  },
+  {
+    _id: invite2Id,
+    inviter_user_id: user3Id,
+    invited_user_id: user4Id,
+    family_id: family3Id,
   },
 ];
 
