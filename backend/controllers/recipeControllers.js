@@ -7,34 +7,42 @@ import { uploadFileToBlob } from "../utils/uploadFileToBlob.js";
 // @route   POST /api/recipes
 // @access  Private
 const addRecipe = asyncHandler(async (req, res) => {
+  // Check if the user provided all the necessary data
+  if (
+    !req.body.name ||
+    !req.body.prep_time ||
+    !req.body.total_time ||
+    !req.body.ingredients ||
+    !req.body.steps ||
+    !req.body.recommendations ||
+    !req.body.origin ||
+    !req.body.visibility
+  ) {
+    res.status(400);
+    throw new Error("Not valid data, data missing");
+  }
   // Declare the variables
-  let name,
-    origin,
-    recommendations,
-    prep_time,
-    total_time,
-    ingredients,
-    steps,
-    is_private;
+  let newRecipe = {};
   // Get the data from the request
   try {
-    name = req.body.name;
-    origin = req.body.origin;
-    recommendations = req.body.recommendations;
-    prep_time = Number(req.body.prep_time);
-    total_time = Number(req.body.total_time);
-    ingredients = JSON.parse(req.body.ingredients);
-    steps = JSON.parse(req.body.steps);
-    is_private = JSON.parse(req.body.is_private);
+    newRecipe.name = req.body.name;
+    newRecipe.prep_time = Number(req.body.prep_time);
+    if (isNaN(newRecipe.prep_time)) throw new Error();
+    newRecipe.total_time = Number(req.body.total_time);
+    if (isNaN(newRecipe.total_time)) throw new Error();
+    newRecipe.ingredients = JSON.parse(req.body.ingredients);
+    newRecipe.steps = JSON.parse(req.body.steps);
+    newRecipe.recommendations = req.body.recommendations;
+    newRecipe.origin = req.body.origin;
+    newRecipe.visibility = req.body.visibility;
   } catch (error) {
     res.status(400);
-    throw new Error("Invalid recipe data");
+    throw new Error("Invalid recipe data, not parsable");
   }
-  // Check if the user provided an image
-  let imageUrl = "/images/default_recipe.jpg";
+  //Check if the user provided an image
   if (req.file) {
     try {
-      imageUrl = await uploadFileToBlob(req.file);
+      newRecipe.recipe_image = await uploadFileToBlob(req.file);
     } catch (error) {
       res.status(500);
       throw new Error("Error uploading image.");
@@ -42,30 +50,24 @@ const addRecipe = asyncHandler(async (req, res) => {
   }
   // Create the recipe
   const recipe = await Recipe.create({
-    creator_id: req.user._id,
-    name,
-    prep_time,
-    total_time,
-    ingredients,
-    steps,
-    recommendations,
-    origin,
-    image: imageUrl,
-    is_private,
+    ...newRecipe,
+    author_id: req.user._id,
   });
   // Send the recipe data
   if (recipe) {
     res.status(201).json({
-      _id: recipe._id,
-      name: recipe.name,
-      prepTime: recipe.prepTime,
-      totalTime: recipe.totalTime,
-      ingredients: recipe.ingredients,
-      steps: recipe.steps,
-      recommendations: recipe.recommendations,
-      origin: recipe.origin,
-      image: recipe.image,
-      private: recipe.private,
+      recipe: {
+        _id: recipe._id,
+        name: recipe.name,
+        prep_time: recipe.prep_time,
+        total_time: recipe.total_time,
+        ingredients: recipe.ingredients,
+        steps: recipe.steps,
+        recommendations: recipe.recommendations,
+        origin: recipe.origin,
+        recipe_image: recipe.recipe_image,
+        visibility: recipe.visibility,
+      },
     });
   } else {
     res.status(400);
@@ -73,143 +75,131 @@ const addRecipe = asyncHandler(async (req, res) => {
   }
 });
 
-// @desc    Get user recipes
-// @route   GET /api/recipes/userRecipes/
-// @access  Private
-const getUserRecipes = asyncHandler(async (req, res) => {
-  // Search for recipes created by the user
-  const recipes = await Recipe.find({ creator_id: req.user._id });
-  // Send only the needed data
-  const recipesToSend = recipes.map((recipe) => {
-    return {
-      _id: recipe._id,
-      name: recipe.name,
-      image: recipe.image,
-    };
-  });
-  res.json(recipesToSend);
-});
-
-// @desc    Get single recipe provided the recipe id
+// @desc    Get  recipe by id
 // @route   GET /api/recipes/:recipe_id
-// @access  Private, recipeFamilyAuthorized
+// @access  Private, recipeAuthorized
 const getRecipe = asyncHandler(async (req, res) => {
   // Find recipe creator
-  const creator = await User.findById(req.recipe.creator_id);
+  const author = await User.findById(req.recipe.author_id);
   // Send the recipe data
   res.json({
-    _id: req.recipe._id,
-    name: req.recipe.name,
-    origin: req.recipe.origin,
-    recommendations: req.recipe.recommendations,
-    prep_time: req.recipe.prep_time,
-    total_time: req.recipe.total_time,
-    ingredients: req.recipe.ingredients,
-    steps: req.recipe.steps,
-    is_private: req.recipe.is_private,
-    image: req.recipe.image,
-    creator_username: creator.username,
+    recipe: {
+      _id: req.recipe._id,
+      name: req.recipe.name,
+      prep_time: req.recipe.prep_time,
+      total_time: req.recipe.total_time,
+      ingredients: req.recipe.ingredients,
+      steps: req.recipe.steps,
+      recommendations: req.recipe.recommendations,
+      origin: req.recipe.origin,
+      recipe_image: req.recipe.recipe_image,
+      visibility: req.recipe.visibility,
+      author: author.username,
+    },
   });
 });
 
 // @desc    Edit a recipe
-// @route   PUT /api/recipes/
+// @route   PUT /api/recipes/:recipe_id
 // @access  Private, recipeOwner
 const editRecipe = asyncHandler(async (req, res) => {
-  // Get the data from the request, not everything is necessary
+  // Declare the variables
+  let recipe = {};
+  // Get the data from the request
   try {
-    const {
-      name,
-      origin,
-      recommendations,
-      prep_time,
-      total_time,
-      ingredients,
-      steps,
-      is_private,
-    } = req.body;
-    const recipeData = {
-      ...(name && { name }),
-      ...(origin && { origin }),
-      ...(recommendations && { recommendations }),
-      ...(prep_time && { prep_time: Number(prep_time) }),
-      ...(total_time && { total_time: Number(total_time) }),
-      ...(ingredients && { ingredients: JSON.parse(ingredients) }),
-      ...(steps && { steps: JSON.parse(steps) }),
-      ...(is_private && { is_private: JSON.parse(is_private) }),
-    };
+    if (req.body.name) recipe.name = req.body.name;
+    if (req.body.prep_time) recipe.prep_time = Number(req.body.prep_time);
+    if (req.body.total_time) recipe.total_time = Number(req.body.total_time);
+    if (req.body.ingredients)
+      recipe.ingredients = JSON.parse(req.body.ingredients);
+    if (req.body.steps) recipe.steps = JSON.parse(req.body.steps);
+    if (req.body.recommendations)
+      recipe.recommendations = req.body.recommendations;
+    if (req.body.origin) recipe.origin = req.body.origin;
+    if (req.body.visibility) recipe.visibility = req.body.visibility;
   } catch (error) {
     res.status(400);
-    throw new Error("Invalid recipe data");
+    throw new Error("Invalid recipe data, not parsable");
   }
-  // Get image if user provided one
+  //Check if the user provided an image
   if (req.file) {
     try {
-      recipeData.image = await uploadFileToBlob(req.file);
+      recipe.recipe_image = await uploadFileToBlob(req.file);
     } catch (error) {
       res.status(500);
       throw new Error("Error uploading image.");
     }
   }
   // Update the recipe
-  const recipe = req.recipe;
-  recipe.name = recipe_data.name || recipe.name;
-  recipe.origin = recipe_data.origin || recipe.origin;
-  recipe.recommendations =
-    recipe_data.recommendations || recipe.recommendations;
-  recipe.prep_time = recipe_data.prep_time || recipe.prep_time;
-  recipe.total_time = recipe_data.total_time || recipe.total_time;
-  recipe.ingredients = recipe_data.ingredients || recipe.ingredients;
-  recipe.steps = recipe_data.steps || recipe.steps;
-  recipe.is_private =
-    recipe_data.is_private !== undefined
-      ? recipe_data.is_private
-      : recipe.is_private;
+  const updatedRecipe = await Recipe.findByIdAndUpdate(
+    req.params.recipe_id,
+    { $set: recipe },
+    { new: true }
+  );
+  // Send the updated recipe data
+  if (updatedRecipe) {
+    res.json({
+      message: "Recipe updated",
+      recipe: {
+        _id: updatedRecipe._id,
+        name: updatedRecipe.name,
+        prep_time: updatedRecipe.prep_time,
+        total_time: updatedRecipe.total_time,
+        ingredients: updatedRecipe.ingredients,
+        steps: updatedRecipe.steps,
+        recommendations: updatedRecipe.recommendations,
+        origin: updatedRecipe.origin,
+        recipe_image: updatedRecipe.recipe_image,
+        visibility: updatedRecipe.visibility,
+      },
+    });
+  } else {
+    res.status(400);
+    throw new Error("Invalid recipe data");
+  }
 });
 
-// @desc    Get family recipes
-// @route   GET /api/recipes/familyrecipes/:family_id
-// @access  Private, familyMember
-const getFamilyRecipes = asyncHandler(async (req, res) => {
-  // Send only the needed data
-  const recipes = await Recipe.find({
-    creator_id: { $in: req.family.members },
-  }).populate("creator_id", "username");
-  const recipesToSend = recipes.map((recipe) => {
-    return {
-      _id: recipe._id,
-      name: recipe.name,
-      image: recipe.image,
-      creator_username: recipe.user.username,
-    };
-  });
-  res.json(recipesToSend);
+// @desc    Get public recipes
+// @route   GET /api/recipes/public
+// @access  Public
+const getPublicRecipes = asyncHandler(async (req, res) => {
+  const recipes = await Recipe.find({ visibility: "public" });
+  res.json({ recipes });
 });
 
-// @desc    Get recipes from all user families
-// @route   GET /api/recipes/familyrecipes
-// @access  Private
-const getRecipesFromUserFamilies = asyncHandler(async (req, res) => {
-  // Find all user families
-  const families = await Family.find({ members: req.user._id });
-  // Find recipes from all user families
-  const recipes = await Recipe.find({ creator_id: { $in: families } });
-  // Send only the needed data
-  const recipesToSend = recipes.map((recipe) => {
-    return {
-      _id: recipe._id,
-      name: recipe.name,
-      image: recipe.image,
-    };
-  });
-  res.json(recipesToSend);
+// @desc    Add recipe to favorites
+// @route   PUT /api/recipes/:recipe_id/favorite
+// @access  Private, recipeAuthorized
+const addFavorite = asyncHandler(async (req, res) => {
+  if (req.user.favorites.includes(req.recipe._id)) {
+    res.status(400);
+    throw new Error("Recipe already in favorites");
+  }
+  req.user.favorites.push(req.recipe._id);
+  await req.user.save();
+  res.status(200).json({ message: "Recipe added to favorites" });
+});
+
+// @desc    Remove recipe from favorites
+// @route   DELETE /api/recipes/:recipe_id/favorite
+// @access  Private, recipeAuthorized
+const removeFavorite = asyncHandler(async (req, res) => {
+  if (!req.user.favorites.includes(req.recipe._id)) {
+    res.status(400);
+    throw new Error("Recipe not in favorites");
+  }
+  req.user.favorites = req.user.favorites.filter(
+    (recipe) => recipe.toString() !== req.recipe._id.toString()
+  );
+  await req.user.save();
+  res.status(200).json({ message: "Recipe removed from favorites" });
 });
 
 // @desc    Delete a recipe
 // @route   DELETE /api/recipes/:recipe_id
 // @access  Private, recipeOwner
 const deleteRecipe = asyncHandler(async (req, res) => {
-  const recipe = Recipe.findByIdAndDelete(req.params.recipe_id);
+  const recipe = await Recipe.findByIdAndDelete(req.recipe._id);
   if (recipe) {
     res.json({ message: "Recipe deleted" });
   } else {
@@ -220,10 +210,10 @@ const deleteRecipe = asyncHandler(async (req, res) => {
 
 export {
   addRecipe,
-  getUserRecipes,
   getRecipe,
   editRecipe,
-  getFamilyRecipes,
-  getRecipesFromUserFamilies,
+  getPublicRecipes,
+  addFavorite,
+  removeFavorite,
   deleteRecipe,
 };

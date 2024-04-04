@@ -1,37 +1,41 @@
 import express from "express";
 import {
   addRecipe,
-  getUserRecipes,
   getRecipe,
   editRecipe,
-  getFamilyRecipes,
-  getRecipesFromUserFamilies,
+  getPublicRecipes,
+  addFavorite,
+  removeFavorite,
   deleteRecipe,
 } from "../controllers/recipeControllers.js";
 import multer from "multer";
 import { protect } from "../middleware/authMiddleware.js";
 import {
   recipeOwner,
-  recipeFamilyAuthorized,
+  recipeAuthorized,
 } from "../middleware/recipeMiddleware.js";
-import { familyAdmin, familyUser } from "../middleware/familyMiddleware.js";
 
 const upload = multer({ storage: multer.memoryStorage() });
 
 const router = express.Router();
 
 router.post("/", protect, upload.single("image"), addRecipe);
-router.get("/userRecipes", protect, getUserRecipes);
-router.get("/:recipe_id", protect, recipeFamilyAuthorized, getRecipe);
+router.get("/public", getPublicRecipes);
+router.get("/:recipe_id", protect, recipeAuthorized, getRecipe);
 router.put(
-  "/edit/:recipe_id",
+  "/:recipe_id",
   protect,
   recipeOwner,
   upload.single("image"),
   editRecipe
 );
-router.get("/familyRecipes/:family_id", protect, familyUser, getFamilyRecipes);
-router.get("/familyRecipes", protect, getRecipesFromUserFamilies);
+router.put("/:recipe_id/favorite", protect, recipeAuthorized, addFavorite);
+router.delete(
+  "/:recipe_id/favorite",
+  protect,
+  recipeAuthorized,
+  removeFavorite
+);
 router.delete("/:recipe_id", protect, recipeOwner, deleteRecipe);
 
 export default router;

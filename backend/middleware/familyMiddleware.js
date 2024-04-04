@@ -25,11 +25,10 @@ const familyUser = asyncHandler(async (req, res, next) => {
   const family = await Family.findById(req.params.family_id);
   if (family) {
     const user = family.members.find(
-      (member) => member.user_id.toString() === req.user._id.toString()
+      (member) => member.toString() === req.user._id.toString()
     );
     if (user) {
       req.family = family;
-      req.family_admin = user.admin;
       next();
     } else {
       res.status(403);

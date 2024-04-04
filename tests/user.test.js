@@ -48,9 +48,9 @@ beforeEach(() => {
 
 describe("User API", () => {
   //to test with postman
-  after(async function () {
-    await loadFixtures();
-  });
+  // after(async function () {
+  //   await loadFixtures();
+  // });
 
   describe("Register new user: POST /api/users/register", () => {
     beforeEach(async function () {

@@ -9,7 +9,9 @@
     "server": "nodemon backend/server.js",
     "client": "npm run dev --prefix frontend",
     "dev": "concurrently \"npm run server\" \"npm run client\"",
-    "test": "NODE_ENV=test mocha --require @babel/register tests/*.test.js"
+    "test": "NODE_ENV=test mocha --require @babel/register tests/*.test.js",
+    "test_user": "NODE_ENV=test mocha --require @babel/register tests/user.test.js",
+    "test_recipe": "NODE_ENV=test mocha --require @babel/register tests/recipe.test.js"
   },
   "author": "Carles Encinas Turro",
   "license": "MIT",
