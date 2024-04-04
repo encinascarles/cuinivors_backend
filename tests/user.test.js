@@ -54,10 +54,8 @@ describe("User API", () => {
 
   describe("Register new user: POST /api/users/register", () => {
     beforeEach(async function () {
-      await loadUsers();
-    });
-    afterEach(async function () {
       await clearUsers();
+      await loadUsers();
     });
 
     const newUser = {
@@ -154,10 +152,8 @@ describe("User API", () => {
 
   describe("Login: POST /api/users/login", () => {
     beforeEach(async function () {
-      await loadUsers();
-    });
-    afterEach(async function () {
       await clearUsers();
+      await loadUsers();
     });
     it("should login user and return user object and cookie", async function () {
       //login the user
@@ -205,10 +201,8 @@ describe("User API", () => {
 
   describe("Logout: POST /api/users/logout", () => {
     beforeEach(async function () {
-      await loadUsers();
-    });
-    afterEach(async function () {
       await clearUsers();
+      await loadUsers();
     });
 
     it("should logout the user and clear the session", async function () {
@@ -236,10 +230,8 @@ describe("User API", () => {
 
   describe("Get user profile: GET /api/users/profile", () => {
     beforeEach(async function () {
-      await loadUsers();
-    });
-    afterEach(async function () {
       await clearUsers();
+      await loadUsers();
     });
 
     it("should return the user's profile", async function () {
@@ -265,10 +257,8 @@ describe("User API", () => {
 
   describe("Update user profile: PUT /api/users/profile", () => {
     beforeEach(async function () {
-      await loadUsers();
-    });
-    afterEach(async function () {
       await clearUsers();
+      await loadUsers();
     });
 
     const updatedUser = {
@@ -311,10 +301,8 @@ describe("User API", () => {
 
   describe("Get user profile by id: GET /api/users/profile/:user_id", () => {
     beforeEach(async function () {
-      await loadUsers();
-    });
-    afterEach(async function () {
       await clearUsers();
+      await loadUsers();
     });
 
     it("should return the user's profile", async function () {
@@ -338,12 +326,10 @@ describe("User API", () => {
 
   describe("Get user families: GET /api/users/families", () => {
     beforeEach(async function () {
-      await loadUsers();
-      await loadFamilies();
-    });
-    afterEach(async function () {
       await clearUsers();
       await clearFamilies();
+      await loadUsers();
+      await loadFamilies();
     });
 
     it("should return the user's families", async function () {
@@ -353,7 +339,7 @@ describe("User API", () => {
       // Get the user's families
       const familiesRes = await agent.get(userFamiliesURL);
       expect(familiesRes.statusCode).to.equal(200);
-      expect(familiesRes.body.families).to.have.lengthOf(2);
+      expect(familiesRes.body.families).to.have.lengthOf(3);
       expect(familiesRes.body.families[0]).to.include({
         name: familyFixtures[0].name,
         description: familyFixtures[0].description,
@@ -368,12 +354,10 @@ describe("User API", () => {
 
   describe("Get user recipes: GET /api/users/recipes", () => {
     beforeEach(async function () {
-      await loadUsers();
-      await loadRecipes();
-    });
-    afterEach(async function () {
       await clearUsers();
       await clearRecipes();
+      await loadUsers();
+      await loadRecipes();
     });
 
     it("should return the user's recipes", async function () {
@@ -404,11 +388,9 @@ describe("User API", () => {
 
   describe("Delete User: DELETE /api/users", () => {
     beforeEach(async function () {
+      await clearFixtures();
       await loadFixtures();
       await login(agent, userFixtures[0]);
-    });
-    afterEach(async function () {
-      await clearFixtures();
     });
     it("should delete the user, remove it from families, if last admin delete the family, delete the recipes and remove user invites", async function () {
       // Delete the user

@@ -8,6 +8,246 @@ import {
   loadFamilies,
   loadRecipes,
   loadFixtures,
+  loadInvites,
+  clearUsers,
+  clearFamilies,
+  clearRecipes,
+  clearInvites,
+} from "./fixtures/loadFixtures.js";
+import {
+  userFixtures,
+  recipeFixtures,
+  familyFixtures,
+  inviteFixtures,
+} from "./fixtures/mockDataDB.js";
+import Invite from "../backend/models/inviteModel.js";
+import Family from "../backend/models/familyModel.js";
+
+const loginURL = "/api/users/auth/";
+
+const inviteURL = "/api/invites/";
+
+const login = async (agent, user) => {
+  const res = await agent
+    .post(loginURL)
+    .send({ email: user.email, password: user.password });
+  // Check if the response is successful
+  expect(res.statusCode).to.equal(200);
+  // Check cookie
+  expect(res.headers["set-cookie"]).to.exist;
+  return res;
+};
+
+let agent;
+
+beforeEach(() => {
+  agent = supertest.agent(app);
+});
+
+describe("Recipe API", () => {
+  //to test with postman
+  // after(async function () {
+  //   await clearFixtures();
+  //   await loadFixtures();
+  // });
+  describe("Create invite: POST /api/invites", () => {
+    beforeEach(async function () {
+      await clearUsers();
+      await clearFamilies();
+      await loadUsers();
+      await loadFamilies();
+      await login(agent, userFixtures[0]);
+    });
+
+    it("should create a new invite and verify it was added to the database", async function () {
+      // Create the invite
+      const res = await agent.post(inviteURL).send({
+        family_id: familyFixtures[0]._id,
+        invited_username: userFixtures[2].username,
+      });
+      expect(res.statusCode).to.equal(201);
+
+      expect(res.body.invite).to.deep.include({
+        family_id: familyFixtures[0]._id.toString(),
+        invited_user_id: userFixtures[2]._id.toString(),
+        inviter_user_id: userFixtures[0]._id.toString(),
+      });
+      // Verify the invite was added to the database
+      const inviteInDb = await Invite.findOne({
+        family_id: familyFixtures[0]._id,
+        invited_user_id: userFixtures[2]._id,
+        inviter_user_id: userFixtures[0]._id,
+      });
+    });
+    it("should return 400 if data is missing", async function () {
+      const res = await agent
+        .post(inviteURL)
+        .send({ family_id: familyFixtures[0]._id });
+      expect(res.statusCode).to.equal(400);
+      expect(res.body.message).to.equal("Not valid data");
+    });
+    it("should return 404 if user does not exist", async function () {
+      const res = await agent.post(inviteURL).send({
+        family_id: familyFixtures[0]._id,
+        invited_username: "userinvented",
+      });
+      expect(res.statusCode).to.equal(404);
+      expect(res.body.message).to.equal("User not found");
+    });
+    it("should return 404 if family does not exist", async function () {
+      const res = await agent.post(inviteURL).send({
+        family_id: "660f0cfe6e4cca00864e4c99",
+        invited_username: userFixtures[2].username,
+      });
+      expect(res.statusCode).to.equal(404);
+      expect(res.body.message).to.equal("Family not found");
+    });
+    it("should return 400 if user is already in family", async function () {
+      const res = await agent.post(inviteURL).send({
+        family_id: familyFixtures[0]._id,
+        invited_username: userFixtures[1].username,
+      });
+      expect(res.statusCode).to.equal(400);
+      expect(res.body.message).to.equal("User is already in family");
+    });
+    it("should return 400 if user has already been invited", async function () {
+      const res = await agent.post(inviteURL).send({
+        family_id: familyFixtures[0]._id,
+        invited_username: userFixtures[2].username,
+      });
+      expect(res.statusCode).to.equal(400);
+      expect(res.body.message).to.equal("User has already been invited");
+    });
+    it("should return 400 if the id is not valid", async function () {
+      const res = await agent.post(inviteURL).send({
+        family_id: "123456",
+        invited_username: userFixtures[2].username,
+      });
+      expect(res.statusCode).to.equal(400);
+      expect(res.body.message).to.equal("Not valid id");
+    });
+  });
+  describe("List invites: GET /api/invites", () => {
+    beforeEach(async function () {
+      await clearUsers();
+      await clearFamilies();
+      await clearRecipes();
+      await loadUsers();
+      await loadFamilies();
+      await loadRecipes();
+      await login(agent, userFixtures[2]);
+    });
+
+    it("should return the list of invites", async function () {
+      // Get the list of invites
+      const invitesRes = await agent.get(inviteURL);
+      expect(invitesRes.statusCode).to.equal(200);
+      expect(invitesRes.body.invites).to.have.lengthOf(1);
+      expect(invitesRes.body.invites[0]).to.deep.include({
+        family_id: familyFixtures[0]._id.toString(),
+        invited_user_id: userFixtures[2]._id.toString(),
+        inviter_user_id: userFixtures[0]._id.toString(),
+      });
+    });
+    it("should return 401 if the user is not authenticated", async function () {
+      const invitesRes = await supertest(app).get(inviteURL);
+      expect(invitesRes.statusCode).to.equal(401);
+    });
+  });
+  describe("Accept invite: POST /api/invites/:invite_id/accept", () => {
+    beforeEach(async function () {
+      await clearUsers();
+      await clearFamilies();
+      await clearInvites();
+      await loadUsers();
+      await loadFamilies();
+      await loadInvites();
+      await login(agent, userFixtures[2]);
+    });
+
+    it("should accept the invite and verify the user was added to the family", async function () {
+      // Accept the invite
+      const res = await agent.post(
+        inviteURL + inviteFixtures[0]._id + "/accept"
+      );
+      expect(res.statusCode).to.equal(200);
+      expect(res.body.message).to.equal("Invite accepted");
+      // Verify the user was added to the family
+      const familyInDb = await Family.findById(familyFixtures[0]._id);
+      expect(familyInDb.members).to.include(userFixtures[2]._id);
+    });
+    it("should return 404 if the invite does not exist", async function () {
+      const res = await agent.post(
+        inviteURL + "660f0cfe6e4cca00864e4c99/accept"
+      );
+      expect(res.statusCode).to.equal(404);
+    });
+    it("should return 400 if the id is not valid", async function () {
+      const res = await agent.post(inviteURL + "123456/accept");
+      expect(res.statusCode).to.equal(400);
+      expect(res.body.message).to.equal("Not valid id");
+    });
+    it("should return 401 if the user is not the invited user", async function () {
+      const res = await agent.post(
+        inviteURL + inviteFixtures[1]._id + "/accept"
+      );
+      expect(res.statusCode).to.equal(401);
+    });
+  });
+  describe("Decline invite: POST /api/invites/:invite_id/decline", () => {
+    beforeEach(async function () {
+      await clearUsers();
+      await clearFamilies();
+      await clearInvites();
+      await loadUsers();
+      await loadFamilies();
+      await loadInvites();
+      await login(agent, userFixtures[2]);
+    });
+
+    it("should decline the invite", async function () {
+      // Decline the invite
+      const res = await agent.post(
+        inviteURL + inviteFixtures[0]._id + "/decline"
+      );
+      expect(res.statusCode).to.equal(200);
+      expect(res.body.message).to.equal("Invite declined");
+      // Verify the invite was removed from the database
+      const inviteInDb = await Invite.findById(inviteFixtures[0]._id);
+      expect(inviteInDb).to.not.exist;
+    });
+    it("should return 404 if the invite does not exist", async function () {
+      const res = await agent.post(
+        inviteURL + "660f0cfe6e4cca00864e4c99/decline"
+      );
+      expect(res.statusCode).to.equal(404);
+    });
+    it("should return 400 if the id is not valid", async function () {
+      const res = await agent.post(inviteURL + "123456/decline");
+      expect(res.statusCode).to.equal(400);
+      expect(res.body.message).to.equal("Not valid id");
+    });
+    it("should return 401 if the user is not the invited user", async function () {
+      const res = await agent.post(
+        inviteURL + inviteFixtures[1]._id + "/decline"
+      );
+      expect(res.statusCode).to.equal(401);
+    });
+  });
+});
+
+//recipe tests to have as a reference:
+/*
+import supertest from "supertest";
+import { expect } from "chai";
+import app from "../backend/server.js";
+import User from "../backend/models/userModel.js";
+import Recipe from "../backend/models/recipeModel.js";
+import {
+  loadUsers,
+  loadFamilies,
+  loadRecipes,
+  loadFixtures,
   clearUsers,
   clearFamilies,
   clearRecipes,
@@ -398,3 +638,6 @@ describe("Recipe API", () => {
     });
   });
 });
+
+
+*/

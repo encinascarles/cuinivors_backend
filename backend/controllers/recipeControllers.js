@@ -164,7 +164,21 @@ const editRecipe = asyncHandler(async (req, res) => {
 // @access  Public
 const getPublicRecipes = asyncHandler(async (req, res) => {
   const recipes = await Recipe.find({ visibility: "public" });
-  res.json({ recipes });
+  res.json({
+    recipes: recipes.map((recipe) => {
+      return {
+        _id: recipe._id,
+        name: recipe.name,
+        prep_time: recipe.prep_time,
+        total_time: recipe.total_time,
+        ingredients: recipe.ingredients,
+        steps: recipe.steps,
+        recommendations: recipe.recommendations,
+        origin: recipe.origin,
+        recipe_image: recipe.recipe_image,
+      };
+    }),
+  });
 });
 
 // @desc    Add recipe to favorites

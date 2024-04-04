@@ -11,7 +11,9 @@
     "dev": "concurrently \"npm run server\" \"npm run client\"",
     "test": "NODE_ENV=test mocha --require @babel/register tests/*.test.js",
     "test_user": "NODE_ENV=test mocha --require @babel/register tests/user.test.js",
-    "test_recipe": "NODE_ENV=test mocha --require @babel/register tests/recipe.test.js"
+    "test_recipe": "NODE_ENV=test mocha --require @babel/register tests/recipe.test.js",
+    "test_family": "NODE_ENV=test mocha --require @babel/register tests/family.test.js",
+    "test_invite": "NODE_ENV=test mocha --require @babel/register tests/invite.test.js"
   },
   "author": "Carles Encinas Turro",
   "license": "MIT",
