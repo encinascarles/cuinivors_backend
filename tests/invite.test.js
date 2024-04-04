@@ -13,6 +13,7 @@ import {
   clearFamilies,
   clearRecipes,
   clearInvites,
+  clearFixtures,
 } from "./fixtures/loadFixtures.js";
 import {
   userFixtures,
@@ -54,8 +55,10 @@ describe("Recipe API", () => {
     beforeEach(async function () {
       await clearUsers();
       await clearFamilies();
+      await clearInvites();
       await loadUsers();
       await loadFamilies();
+      await loadInvites();
       await login(agent, userFixtures[0]);
     });
 
@@ -63,19 +66,19 @@ describe("Recipe API", () => {
       // Create the invite
       const res = await agent.post(inviteURL).send({
         family_id: familyFixtures[0]._id,
-        invited_username: userFixtures[2].username,
+        invited_username: userFixtures[3].username,
       });
       expect(res.statusCode).to.equal(201);
 
       expect(res.body.invite).to.deep.include({
         family_id: familyFixtures[0]._id.toString(),
-        invited_user_id: userFixtures[2]._id.toString(),
+        invited_user_id: userFixtures[3]._id.toString(),
         inviter_user_id: userFixtures[0]._id.toString(),
       });
       // Verify the invite was added to the database
       const inviteInDb = await Invite.findOne({
         family_id: familyFixtures[0]._id,
-        invited_user_id: userFixtures[2]._id,
+        invited_user_id: userFixtures[3]._id,
         inviter_user_id: userFixtures[0]._id,
       });
     });
@@ -132,9 +135,11 @@ describe("Recipe API", () => {
       await clearUsers();
       await clearFamilies();
       await clearRecipes();
+      await clearInvites();
       await loadUsers();
       await loadFamilies();
       await loadRecipes();
+      await loadInvites();
       await login(agent, userFixtures[2]);
     });
 
@@ -183,7 +188,7 @@ describe("Recipe API", () => {
       expect(res.statusCode).to.equal(404);
     });
     it("should return 400 if the id is not valid", async function () {
-      const res = await agent.post(inviteURL + "123456/accept");
+      const res = await agent.post(inviteURL + "non-castable-id/accept");
       expect(res.statusCode).to.equal(400);
       expect(res.body.message).to.equal("Not valid id");
     });
@@ -223,7 +228,7 @@ describe("Recipe API", () => {
       expect(res.statusCode).to.equal(404);
     });
     it("should return 400 if the id is not valid", async function () {
-      const res = await agent.post(inviteURL + "123456/decline");
+      const res = await agent.post(inviteURL + "non-castable-id/decline");
       expect(res.statusCode).to.equal(400);
       expect(res.body.message).to.equal("Not valid id");
     });

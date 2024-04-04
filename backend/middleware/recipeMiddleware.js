@@ -3,6 +3,11 @@ import Family from "../models/familyModel.js";
 import Recipe from "../models/recipeModel.js";
 
 const recipeOwner = asyncHandler(async (req, res, next) => {
+  // Check if recipe_id is castable to ObjectId
+  if (!req.params.recipe_id.match(/^[0-9a-fA-F]{24}$/)) {
+    res.status(400);
+    throw new Error("Not valid id");
+  }
   // Find the recipe by ID
   const recipe = await Recipe.findById(req.params.recipe_id);
   // Check if the recipe exists
@@ -23,6 +28,11 @@ const recipeOwner = asyncHandler(async (req, res, next) => {
 });
 
 const recipeAuthorized = asyncHandler(async (req, res, next) => {
+  // Check if recipe_id is castable to ObjectId
+  if (!req.params.recipe_id.match(/^[0-9a-fA-F]{24}$/)) {
+    res.status(400);
+    throw new Error("Not valid id");
+  }
   // Find the recipe by ID
   const recipe = await Recipe.findById(req.params.recipe_id);
   // Check if the recipe exists
@@ -30,14 +40,14 @@ const recipeAuthorized = asyncHandler(async (req, res, next) => {
     // Check if the user is the recipe author or recipe is public
     if (
       recipe.author_id.toString() === req.user._id.toString() ||
-      !recipe.visibility === "public"
+      recipe.visibility === "public"
     ) {
       // Grant access if the user is the author of the recipe or the recipe is public
       req.recipe = recipe;
       next();
     } else {
       // Check if recipe is private
-      if (recipe.is_private) {
+      if (recipe.visibility === "private") {
         res.status(403);
         throw new Error("Private recipe. Not authorized as recipe owner");
       }

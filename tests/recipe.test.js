@@ -11,6 +11,7 @@ import {
   clearUsers,
   clearFamilies,
   clearRecipes,
+  clearFixtures,
 } from "./fixtures/loadFixtures.js";
 import { userFixtures, recipeFixtures } from "./fixtures/mockDataDB.js";
 
@@ -32,15 +33,17 @@ const login = async (agent, user) => {
 let agent;
 
 beforeEach(() => {
+  clearFixtures();
   agent = supertest.agent(app);
 });
 
+//to test with postman
+// after(async function () {
+//   await clearUsers();
+//   await loadFixtures();
+// });
+
 describe("Recipe API", () => {
-  //to test with postman
-  // after(async function () {
-  //   await clearUsers();
-  //   await loadFixtures();
-  // });
   describe("Add new recipe: POST /api/recipes", () => {
     beforeEach(async function () {
       await clearUsers();
@@ -141,7 +144,7 @@ describe("Recipe API", () => {
       await login(agent, userFixtures[0]);
     });
 
-    it("should return the recipe", async function () {
+    it("should return the recipe if the user is the author", async function () {
       // Get the recipe
       const recipeRes = await agent.get(recipeURL + recipeFixtures[0]._id);
       expect(recipeRes.statusCode).to.equal(200);
@@ -156,14 +159,34 @@ describe("Recipe API", () => {
         visibility: recipeFixtures[0].visibility,
       });
     });
+    it("should return the recipe if the recipe is public", async function () {
+      const recipeRes = await agent.get(recipeURL + recipeFixtures[3]._id);
+      expect(recipeRes.statusCode).to.equal(200);
+    });
+    it("should return the recipe if the user has common family", async function () {
+      const recipeRes = await agent.get(recipeURL + recipeFixtures[4]._id);
+      expect(recipeRes.statusCode).to.equal(200);
+    });
     it("should return 401 if the user is not authenticated", async function () {
       const recipeRes = await supertest(app).get(
         recipeURL + recipeFixtures[0]._id
       );
       expect(recipeRes.statusCode).to.equal(401);
     });
+    it("should return 403 if the recipe is private to family and the user doesn't have common family", async function () {
+      const recipeRes = await agent.get(recipeURL + recipeFixtures[2]._id);
+      expect(recipeRes.statusCode).to.equal(403);
+      expect(recipeRes.body.message).to.equal("Not authorized for this recipe");
+    });
+    it("should return 403 if the recipe is private even if the user has common family", async function () {
+      const recipeRes = await agent.get(recipeURL + recipeFixtures[1]._id);
+      expect(recipeRes.statusCode).to.equal(403);
+      expect(recipeRes.body.message).to.equal(
+        "Private recipe. Not authorized as recipe owner"
+      );
+    });
     it("should return 404 if the recipe does not exist", async function () {
-      const recipeRes = await agent.get(recipeURL + "123456");
+      const recipeRes = await agent.get(recipeURL + "660f0cfe6e4cca00864e4c99");
       expect(recipeRes.statusCode).to.equal(404);
     });
   });
@@ -228,8 +251,17 @@ describe("Recipe API", () => {
         .send(updatedRecipe);
       expect(res.statusCode).to.equal(401);
     });
+    it("should return 400 if the recipe ID is not valid", async () => {
+      const res = await agent
+        .put(recipeURL + "non-castable-id")
+        .send(updatedRecipe);
+      expect(res.statusCode).to.equal(400);
+      expect(res.body.message).to.equal("Not valid id");
+    });
     it("should return 404 if the recipe does not exist", async function () {
-      const res = await agent.put(recipeURL + "123456").send(updatedRecipe);
+      const res = await agent
+        .put(recipeURL + "660f0cfe6e4cca00864e4c99")
+        .send(updatedRecipe);
       expect(res.statusCode).to.equal(404);
     });
     it("should return 401 if the user is not the recipe owner", async function () {
@@ -291,17 +323,24 @@ describe("Recipe API", () => {
     it("should add the recipe to the user favorites", async function () {
       // Add the recipe to favorites
       const res = await agent.put(
-        recipeURL + recipeFixtures[1]._id + "/favorite"
+        recipeURL + recipeFixtures[4]._id + "/favorite"
       );
       expect(res.statusCode).to.equal(200);
       expect(res.body.message).to.equal("Recipe added to favorites");
       // Verify the recipe was added to the user favorites
       const userInDb = await User.findOne({ email: userFixtures[0].email });
-      expect(userInDb.favorites).to.include(recipeFixtures[1]._id);
+      expect(userInDb.favorites).to.include(recipeFixtures[4]._id);
     });
     it("should return 404 if the recipe does not exist", async function () {
-      const res = await agent.put(recipeURL + "123456/favorite");
+      const res = await agent.put(
+        recipeURL + "660f0cfe6e4cca00864e4c99/favorite"
+      );
       expect(res.statusCode).to.equal(404);
+    });
+    it("should return 400 if the recipe ID is not valid", async () => {
+      const res = await agent.put(recipeURL + "non-castable-id/favorite");
+      expect(res.statusCode).to.equal(400);
+      expect(res.body.message).to.equal("Not valid id");
     });
     it("should return 400 if the recipe is already in favorites", async function () {
       // Try to add a recipe that is already in favorites
@@ -313,7 +352,7 @@ describe("Recipe API", () => {
     });
     it("should return 401 if the user is not authenticated", async function () {
       const res = await supertest(app).put(
-        recipeURL + recipeFixtures[1]._id + "/favorite"
+        recipeURL + recipeFixtures[4]._id + "/favorite"
       );
       expect(res.statusCode).to.equal(401);
     });
@@ -342,16 +381,23 @@ describe("Recipe API", () => {
       expect(userInDb.favorites).to.not.include(recipeFixtures[0]._id);
     });
     it("should return 404 if the recipe does not exist", async function () {
-      const res = await agent.delete(recipeURL + "123456/favorite");
+      const res = await agent.delete(
+        recipeURL + "660f0cfe6e4cca00864e4c99/favorite"
+      );
       expect(res.statusCode).to.equal(404);
     });
     it("should return 400 if the recipe is not in favorites", async function () {
       // Try to remove a recipe that is not in favorites
       const res = await agent.delete(
-        recipeURL + recipeFixtures[1]._id + "/favorite"
+        recipeURL + recipeFixtures[4]._id + "/favorite"
       );
       expect(res.statusCode).to.equal(400);
       expect(res.body.message).to.equal("Recipe not in favorites");
+    });
+    it("should return 400 if the recipe ID is not valid", async () => {
+      const res = await agent.delete(recipeURL + "non-castable-id/favorite");
+      expect(res.statusCode).to.equal(400);
+      expect(res.body.message).to.equal("Not valid id");
     });
     it("should return 401 if the user is not authenticated", async function () {
       const res = await supertest(app).delete(
@@ -383,8 +429,13 @@ describe("Recipe API", () => {
       expect(recipeInDb).to.not.exist;
     });
     it("should return 404 if the recipe does not exist", async function () {
-      const res = await agent.delete(recipeURL + "123456");
+      const res = await agent.delete(recipeURL + "660f0cfe6e4cca00864e4c99");
       expect(res.statusCode).to.equal(404);
+    });
+    it("should return 400 if the recipe ID is not valid", async () => {
+      const res = await agent.delete(recipeURL + "non-castable-id");
+      expect(res.statusCode).to.equal(400);
+      expect(res.body.message).to.equal("Not valid id");
     });
     it("should return 401 if the user is not the recipe owner", async function () {
       const res = await agent.delete(recipeURL + recipeFixtures[1]._id);

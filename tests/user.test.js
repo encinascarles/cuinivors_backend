@@ -43,6 +43,7 @@ const login = async (agent, user) => {
 let agent;
 
 beforeEach(() => {
+  clearFixtures();
   agent = supertest.agent(app);
 });
 
@@ -321,6 +322,11 @@ describe("User API", () => {
         profile_image: userFixtures[1].profile_image,
       });
       expect(profileRes.body.user).to.not.have.property("password");
+    });
+    it("should return 400 if user_id is not valid", async function () {
+      const profileRes = await agent.get(profileURL + "/non-castable-id");
+      expect(profileRes.statusCode).to.equal(400);
+      expect(profileRes.body.message).to.equal("Not valid id");
     });
   });
 

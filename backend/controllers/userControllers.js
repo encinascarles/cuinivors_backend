@@ -141,6 +141,12 @@ const updateUserProfile = asyncHandler(async (req, res) => {
 // @route   GET /api/users/profile/:user_id
 // @access  Public
 const getUserProfileById = asyncHandler(async (req, res) => {
+  //check if user_id is castable to ObjectId
+  if (!req.params.user_id.match(/^[0-9a-fA-F]{24}$/)) {
+    res.status(400);
+    throw new Error("Not valid id");
+  }
+  //find user
   const user = await User.findById(req.params.user_id);
   if (user) {
     res.status(200).json({

@@ -51,7 +51,7 @@ const createFamily = asyncHandler(async (req, res) => {
 });
 
 // @desc    Get family by ID
-// @route   GET /api/families/:id
+// @route   GET /api/families/:family_id
 // @access  Private, familyUser
 const getFamilyById = asyncHandler(async (req, res) => {
   res.json({
@@ -67,7 +67,7 @@ const getFamilyById = asyncHandler(async (req, res) => {
 });
 
 // @desc    Modify family
-// @route   PUT /api/families/:id
+// @route   PUT /api/families/:family_id
 // @access  Private, familyAdmin
 const modifyFamily = asyncHandler(async (req, res) => {
   //edit family name and description
@@ -125,6 +125,12 @@ const listMembers = asyncHandler(async (req, res) => {
 // @route   DELETE /api/families/:family_id/members/:user_id
 // @access  Private, familyAdmin
 const removeMember = asyncHandler(async (req, res) => {
+  //check if user_id is castable to ObjectId
+  if (!req.params.user_id.match(/^[0-9a-fA-F]{24}$/)) {
+    res.status(400);
+    throw new Error("Not valid id");
+  }
+  //find family
   //check if user is trying to remove himself
   if (req.user._id.toString() === req.params.user_id.toString()) {
     res.status(400);
@@ -222,6 +228,22 @@ const leaveFamily = asyncHandler(async (req, res) => {
 // @route   POST /api/families/:family_id/admins/:user_id
 // @access  Private, familyAdmin
 const addAdmin = asyncHandler(async (req, res) => {
+  //check if user_id is castable to ObjectId
+  if (!req.params.user_id.match(/^[0-9a-fA-F]{24}$/)) {
+    res.status(400);
+    throw new Error("Not valid id");
+  }
+  //check if user exists
+  const user = await User.findById(req.params.user_id);
+  if (!user) {
+    res.status(404);
+    throw new Error("User not found");
+  }
+  //check if user is a member of the family
+  if (!req.family.members.includes(req.params.user_id)) {
+    res.status(400);
+    throw new Error("User is not a member of the family");
+  }
   //check if user is already an admin
   if (req.family.admins.includes(req.params.user_id)) {
     res.status(400);
@@ -237,6 +259,17 @@ const addAdmin = asyncHandler(async (req, res) => {
 // @route   DELETE /api/families/:family_id/admins/:user_id
 // @access  Private, familyAdmin
 const removeAdmin = asyncHandler(async (req, res) => {
+  //check if user_id is castable to ObjectId
+  if (!req.params.user_id.match(/^[0-9a-fA-F]{24}$/)) {
+    res.status(400);
+    throw new Error("Not valid id");
+  }
+  //check if user exists
+  const user = await User.findById(req.params.user_id);
+  if (!user) {
+    res.status(404);
+    throw new Error("User not found");
+  }
   //check if user is the last admin
   if (
     req.family.admins[0].toString() === req.params.user_id.toString() &&

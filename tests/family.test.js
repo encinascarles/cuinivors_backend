@@ -118,8 +118,14 @@ describe("Family API", () => {
     });
 
     it("should return 404 if the family does not exist", async () => {
-      const familyRes = await agent.get(familyURL + "123456");
+      const familyRes = await agent.get(familyURL + "660f0cfe6e4cca00864e4c99");
       expect(familyRes.statusCode).to.equal(404);
+    });
+
+    it("should return 400 if the family ID is not valid", async () => {
+      const familyRes = await agent.get(familyURL + "non-castable-id");
+      expect(familyRes.statusCode).to.equal(400);
+      expect(familyRes.body.message).to.equal("Not valid id");
     });
 
     it("should return 401 if the user is not authenticated", async () => {
@@ -169,8 +175,22 @@ describe("Family API", () => {
         name: "Updated Family",
         description: "This is an updated family",
       };
-      const res = await agent.put(familyURL + "123456").send(familyData);
+      const res = await agent
+        .put(familyURL + "660f0cfe6e4cca00864e4c99")
+        .send(familyData);
       expect(res.statusCode).to.equal(404);
+    });
+
+    it("should return 400 if the family ID is not valid", async () => {
+      const familyData = {
+        name: "Updated Family",
+        description: "This is an updated family",
+      };
+      const res = await agent
+        .put(familyURL + "non-castable-id")
+        .send(familyData);
+      expect(res.statusCode).to.equal(400);
+      expect(res.body.message).to.equal("Not valid id");
     });
 
     it("should return 401 if the user is not authenticated", async () => {
@@ -209,8 +229,16 @@ describe("Family API", () => {
       });
     });
 
+    it("should return 400 if the family ID is not valid", async () => {
+      const membersRes = await agent.get(familyURL + "non-castable-id/members");
+      expect(membersRes.statusCode).to.equal(400);
+      expect(membersRes.body.message).to.equal("Not valid id");
+    });
+
     it("should return 404 if the family does not exist", async () => {
-      const membersRes = await agent.get(familyURL + "123456/members");
+      const membersRes = await agent.get(
+        familyURL + "660f0cfe6e4cca00864e4c99/members"
+      );
       expect(membersRes.statusCode).to.equal(404);
     });
 
@@ -245,7 +273,7 @@ describe("Family API", () => {
 
     it("should return 404 if the family does not exist", async () => {
       const res = await agent.delete(
-        familyURL + "123456/members/" + userFixtures[1]._id
+        familyURL + "660f0cfe6e4cca00864e4c99/members/" + userFixtures[1]._id
       );
       expect(res.statusCode).to.equal(404);
     });
@@ -256,6 +284,22 @@ describe("Family API", () => {
       );
       expect(res.statusCode).to.equal(400);
       expect(res.body.message).to.equal("Cannot remove yourself");
+    });
+
+    it("should return 400 if the family ID is not valid", async () => {
+      const res = await agent.delete(
+        familyURL + "non-castable-id/members/" + userFixtures[1]._id
+      );
+      expect(res.statusCode).to.equal(400);
+      expect(res.body.message).to.equal("Not valid id");
+    });
+
+    it("should return 400 if the user ID is not valid", async () => {
+      const res = await agent.delete(
+        familyURL + familyFixtures[0]._id + "/members/non-castable-id"
+      );
+      expect(res.statusCode).to.equal(400);
+      expect(res.body.message).to.equal("Not valid id");
     });
 
     it("should return 401 if the user is not authenticated", async () => {
@@ -296,8 +340,16 @@ describe("Family API", () => {
     });
 
     it("should return 404 if the family does not exist", async () => {
-      const recipesRes = await agent.get(familyURL + "123456/recipes");
+      const recipesRes = await agent.get(
+        familyURL + "660f0cfe6e4cca00864e4c99/recipes"
+      );
       expect(recipesRes.statusCode).to.equal(404);
+    });
+
+    it("should return 400 if the family ID is not valid", async () => {
+      const recipesRes = await agent.get(familyURL + "non-castable-id/recipes");
+      expect(recipesRes.statusCode).to.equal(400);
+      expect(recipesRes.body.message).to.equal("Not valid id");
     });
 
     it("should return 401 if the user is not authenticated", async () => {
@@ -370,8 +422,16 @@ describe("Family API", () => {
     });
 
     it("should return 404 if the family does not exist", async () => {
-      const res = await agent.delete(familyURL + "123456/leave");
+      const res = await agent.delete(
+        familyURL + "660f0cfe6e4cca00864e4c99/leave"
+      );
       expect(res.statusCode).to.equal(404);
+    });
+
+    it("should return 400 if the family ID is not valid", async () => {
+      const res = await agent.delete(familyURL + "non-castable-id/leave");
+      expect(res.statusCode).to.equal(400);
+      expect(res.body.message).to.equal("Not valid id");
     });
 
     it("should return 401 if the user is not authenticated", async () => {
@@ -412,9 +472,41 @@ describe("Family API", () => {
 
     it("should return 404 if the family does not exist", async () => {
       const res = await agent.post(
-        familyURL + "123456/admins/" + userFixtures[1]._id
+        familyURL + "660f0cfe6e4cca00864e4c99/admins/" + userFixtures[1]._id
       );
       expect(res.statusCode).to.equal(404);
+    });
+
+    it("should return 404 if the user does not exist", async () => {
+      const res = await agent.post(
+        familyURL + familyFixtures[0]._id + "/admins/660f0cfe6e4cca00864e4c99"
+      );
+      expect(res.statusCode).to.equal(404);
+      expect(res.body.message).to.equal("User not found");
+    });
+
+    it("should return 400 if the user is not a member of the family", async () => {
+      const res = await agent.post(
+        familyURL + familyFixtures[0]._id + "/admins/" + userFixtures[3]._id
+      );
+      expect(res.statusCode).to.equal(400);
+      expect(res.body.message).to.equal("User is not a member of the family");
+    });
+
+    it("should return 400 if the family ID is not valid", async () => {
+      const res = await agent.post(
+        familyURL + "non-castable-id/admins/" + userFixtures[1]._id
+      );
+      expect(res.statusCode).to.equal(400);
+      expect(res.body.message).to.equal("Not valid id");
+    });
+
+    it("should return 400 if the user ID is not valid", async () => {
+      const res = await agent.post(
+        familyURL + familyFixtures[0]._id + "/admins/non-castable-id"
+      );
+      expect(res.statusCode).to.equal(400);
+      expect(res.body.message).to.equal("Not valid id");
     });
 
     it("should return 401 if the user is not authenticated", async () => {
@@ -464,9 +556,33 @@ describe("Family API", () => {
 
     it("should return 404 if the family does not exist", async () => {
       const res = await agent.delete(
-        familyURL + "123456/admins/" + userFixtures[1]._id
+        familyURL + "660f0cfe6e4cca00864e4c99/admins/" + userFixtures[1]._id
       );
       expect(res.statusCode).to.equal(404);
+    });
+
+    it("should return 404 if the user does not exist", async () => {
+      const res = await agent.delete(
+        familyURL + familyFixtures[0]._id + "/admins/660f0cfe6e4cca00864e4c99"
+      );
+      expect(res.statusCode).to.equal(404);
+      expect(res.body.message).to.equal("User not found");
+    });
+
+    it("should return 400 if the family ID is not valid", async () => {
+      const res = await agent.delete(
+        familyURL + "non-castable-id/admins/" + userFixtures[1]._id
+      );
+      expect(res.statusCode).to.equal(400);
+      expect(res.body.message).to.equal("Not valid id");
+    });
+
+    it("should return 400 if the user ID is not valid", async () => {
+      const res = await agent.delete(
+        familyURL + familyFixtures[0]._id + "/admins/non-castable-id"
+      );
+      expect(res.statusCode).to.equal(400);
+      expect(res.body.message).to.equal("Not valid id");
     });
 
     it("should return 401 if the user is not authenticated", async () => {
@@ -497,8 +613,14 @@ describe("Family API", () => {
     });
 
     it("should return 404 if the family does not exist", async () => {
-      const res = await agent.delete(familyURL + "123456");
+      const res = await agent.delete(familyURL + "660f0cfe6e4cca00864e4c99");
       expect(res.statusCode).to.equal(404);
+    });
+
+    it("should return 400 if the family ID is not valid", async () => {
+      const res = await agent.delete(familyURL + "non-castable-id");
+      expect(res.statusCode).to.equal(400);
+      expect(res.body.message).to.equal("Not valid id");
     });
 
     it("should return 401 if the user is not authenticated", async () => {

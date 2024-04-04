@@ -74,7 +74,7 @@ const listInvites = asyncHandler(async (req, res) => {
 // @route   POST /api/invites/:invite_id/accept
 // @access  Private
 const acceptInvite = asyncHandler(async (req, res) => {
-  //check if family_id is castable to ObjectId
+  //check if invite_id is castable to ObjectId
   if (!req.params.invite_id.match(/^[0-9a-fA-F]{24}$/)) {
     res.status(400);
     throw new Error("Not valid id");
@@ -108,7 +108,7 @@ const acceptInvite = asyncHandler(async (req, res) => {
 // @route   POST /api/invites/:invite_id/decline
 // @access  Private
 const declineInvite = asyncHandler(async (req, res) => {
-  //check if family_id is castable to ObjectId
+  //check if invite_id is castable to ObjectId
   if (!req.params.invite_id.match(/^[0-9a-fA-F]{24}$/)) {
     res.status(400);
     throw new Error("Not valid id");
