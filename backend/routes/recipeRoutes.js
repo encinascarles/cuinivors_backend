@@ -19,14 +19,14 @@ const upload = multer({ storage: multer.memoryStorage() });
 
 const router = express.Router();
 
-router.post("/", protect, upload.single("image"), addRecipe);
+router.post("/", protect, upload.single("recipe_image"), addRecipe);
 router.get("/public", getPublicRecipes);
 router.get("/:recipe_id", protect, recipeAuthorized, getRecipe);
 router.put(
   "/:recipe_id",
   protect,
   recipeOwner,
-  upload.single("image"),
+  upload.single("recipe_image"),
   editRecipe
 );
 router.put("/:recipe_id/favorite", protect, recipeAuthorized, addFavorite);

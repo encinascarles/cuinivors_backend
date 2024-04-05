@@ -138,6 +138,29 @@ const updateUserProfile = asyncHandler(async (req, res) => {
   if (req.body.password) {
     req.user.password = req.body.password;
   }
+  //Handle the image upload if the user provided one
+  let oldImageName;
+  let newImageName;
+  if (req.file) {
+    const oldImageUrl = req.user.profile_image;
+    oldImageName = oldImageUrl.substring(oldImageUrl.lastIndexOf("/") + 1);
+    newImageName =
+      oldImageName === "default"
+        ? `${req.user._id}_1`
+        : oldImageName.slice(0, -1) + (parseInt(oldImageName.slice(-1)) + 1);
+    try {
+      // Upload the new image
+      req.user.profile_image = await uploadFileToBlob(
+        req.file,
+        "profile_images",
+        newImageName
+      );
+    } catch (error) {
+      res.status(500);
+      throw new Error("Error uploading image.");
+    }
+  }
+  // Save updated user data
   const updatedUser = await req.user.save();
   // Return updated user data
   res.status(200).json({

@@ -131,6 +131,7 @@ const editRecipe = asyncHandler(async (req, res) => {
   let oldImageName;
   let newImageName;
   if (req.file) {
+    const oldImageUrl = req.recipe.recipe_image;
     oldImageName = oldImageUrl.substring(oldImageUrl.lastIndexOf("/") + 1);
     newImageName =
       oldImageName === "default"
@@ -147,7 +148,6 @@ const editRecipe = asyncHandler(async (req, res) => {
       res.status(500);
       throw new Error("Error uploading image.");
     }
-    const oldImageUrl = recipe.recipe_image;
   }
   // Update the recipe
   const updatedRecipe = await Recipe.findByIdAndUpdate(
