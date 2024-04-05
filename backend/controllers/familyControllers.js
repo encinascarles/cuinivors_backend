@@ -9,12 +9,12 @@ import Recipe from "../models/recipeModel.js";
 // @access  Private
 const createFamily = asyncHandler(async (req, res) => {
   const { name, description } = req.body;
-  //check if user provided with correct data
+  // Check if user provided with the required data
   if (!name || !description) {
     res.status(400);
     throw new Error("Not valid data");
   }
-  //handle image upload
+  // Handle image upload
   let family_image = "/defaultfamilyimage";
   if (req.file) {
     try {
@@ -24,7 +24,7 @@ const createFamily = asyncHandler(async (req, res) => {
       throw new Error("Error uploading image");
     }
   }
-  //create family
+  // Create family
   const family = await Family.create({
     name,
     description,
@@ -32,9 +32,11 @@ const createFamily = asyncHandler(async (req, res) => {
     members: [req.user._id],
     admins: [req.user._id],
   });
-  //Check if it was created and return it
+  // Check if it was created
   if (family) {
+    // Return family if created
     res.status(201).json({
+      message: "Family created",
       family: {
         _id: family._id,
         name: family.name,
@@ -45,6 +47,7 @@ const createFamily = asyncHandler(async (req, res) => {
       },
     });
   } else {
+    // Return error if not created
     res.status(400);
     throw new Error("Invalid family data");
   }
@@ -54,7 +57,8 @@ const createFamily = asyncHandler(async (req, res) => {
 // @route   GET /api/families/:family_id
 // @access  Private, familyUser
 const getFamilyById = asyncHandler(async (req, res) => {
-  res.json({
+  // Return family
+  res.status(200).json({
     family: {
       _id: req.family._id,
       name: req.family.name,
@@ -70,10 +74,15 @@ const getFamilyById = asyncHandler(async (req, res) => {
 // @route   PUT /api/families/:family_id
 // @access  Private, familyAdmin
 const modifyFamily = asyncHandler(async (req, res) => {
-  //edit family name and description
+  // Check if user provided at least one field to update
+  if (!req.body.name && !req.body.description && !req.file) {
+    res.status(400);
+    throw new Error("Not valid data");
+  }
+  // Edit family name and description if provided
   req.family.name = req.body.name || req.family.name;
   req.family.description = req.body.description || req.family.description;
-  //handle image upload
+  // Handle image upload
   if (req.file) {
     let imageUrl = "";
     try {
@@ -84,10 +93,10 @@ const modifyFamily = asyncHandler(async (req, res) => {
       throw new Error("Error uploading image");
     }
   }
-  //save changes
+  // Save changes
   const updatedFamily = await req.family.save();
-  //return updated family
-  res.json({
+  // Return updated family
+  res.status(200).json({
     message: "Family updated",
     family: {
       _id: updatedFamily._id,
@@ -104,7 +113,7 @@ const modifyFamily = asyncHandler(async (req, res) => {
 // @route   GET /api/families/:family_id/members
 // @access  Private, familyUser
 const listMembers = asyncHandler(async (req, res) => {
-  //list all members with user info
+  // List all members with user info
   const members = await Promise.all(
     req.family.members.map(async (member) => {
       const user = await User.findById(member);
@@ -118,25 +127,25 @@ const listMembers = asyncHandler(async (req, res) => {
       };
     })
   );
-  res.json({ members });
+  // Return members
+  res.status(200).json({ members });
 });
 
 // @desc    Remove member from family
 // @route   DELETE /api/families/:family_id/members/:user_id
 // @access  Private, familyAdmin
 const removeMember = asyncHandler(async (req, res) => {
-  //check if user_id is castable to ObjectId
+  // Check if user_id is castable to ObjectId
   if (!req.params.user_id.match(/^[0-9a-fA-F]{24}$/)) {
     res.status(400);
     throw new Error("Not valid id");
   }
-  //find family
-  //check if user is trying to remove himself
+  // Check if user is trying to remove himself
   if (req.user._id.toString() === req.params.user_id.toString()) {
     res.status(400);
     throw new Error("Cannot remove yourself");
   }
-  //remove member from family model
+  // Remove member from family model
   req.family.members = req.family.members.filter(
     (member) => member.toString() !== req.params.user_id.toString()
   );
@@ -144,14 +153,22 @@ const removeMember = asyncHandler(async (req, res) => {
     (admin) => admin.toString() !== req.params.user_id.toString()
   );
   await req.family.save();
-  res.json({ message: "Member removed from family" });
+  // Return success message
+  res.status(200).json({ message: "Member removed from family" });
 });
 
 // @desc    List family recipes
 // @route   GET /api/families/:family_id/recipes
 // @access  Private, familyUser
 const listRecipes = asyncHandler(async (req, res) => {
-  const recipes = await Recipe.find({ author_id: { $in: req.family.members } });
+  // Find non private recipes where author_id is in family members
+  const recipes = await Recipe.find({
+    $or: [
+      { author_id: { $in: req.family.members }, visibility: "public" },
+      { author_id: { $in: req.family.members }, visibility: "family" },
+    ],
+  });
+  // Return recipes
   const recipesToSend = await Promise.all(
     recipes.map(async (recipe) => {
       const user = await User.findById(recipe.author_id);
@@ -169,18 +186,24 @@ const listRecipes = asyncHandler(async (req, res) => {
       };
     })
   );
-  res.json({ recipes: recipesToSend });
+  res.status(200).json({ recipes: recipesToSend });
 });
 
 // @desc    List all user families recipes
 // @route   GET /api/families/recipes
 // @access  Private
 const listAllFamiliesRecipes = asyncHandler(async (req, res) => {
+  // Find all families where user is a member
   const families = await Family.find({ members: req.user._id });
+  // Find all non private recipes where author_id is member of a shared family
   const familyMembers = [].concat(...families.map((family) => family.members));
   const recipes = await Recipe.find({
-    author_id: { $in: familyMembers },
+    $or: [
+      { author_id: { $in: familyMembers }, visibility: "public" },
+      { author_id: { $in: familyMembers }, visibility: "family" },
+    ],
   });
+  // Return recipes
   const recipesToSend = await Promise.all(
     recipes.map(async (recipe) => {
       const user = await User.findById(recipe.author_id);
@@ -198,14 +221,14 @@ const listAllFamiliesRecipes = asyncHandler(async (req, res) => {
       };
     })
   );
-  res.json({ recipes: recipesToSend });
+  res.status(200).json({ recipes: recipesToSend });
 });
 
 // @desc    Leave family
 // @route   POST /api/families/:family_id/leave
 // @access  Private, familyUser
 const leaveFamily = asyncHandler(async (req, res) => {
-  //check if user is the last admin
+  // Check if user is the last admin
   if (
     req.family.admins[0].toString() === req.user._id.toString() &&
     req.family.admins.length === 1
@@ -213,7 +236,7 @@ const leaveFamily = asyncHandler(async (req, res) => {
     res.status(400);
     throw new Error("Cannot leave as last admin");
   }
-  //remove member from family model
+  // Remove member from family model
   req.family.members = req.family.members.filter(
     (member) => member.toString() !== req.user._id.toString()
   );
@@ -221,56 +244,58 @@ const leaveFamily = asyncHandler(async (req, res) => {
     (admin) => admin.toString() !== req.user._id.toString()
   );
   await req.family.save();
-  res.json({ message: "Left family" });
+  // Return success message
+  res.status(200).json({ message: "Left family" });
 });
 
 // @desc    Add an admin to family
 // @route   POST /api/families/:family_id/admins/:user_id
 // @access  Private, familyAdmin
 const addAdmin = asyncHandler(async (req, res) => {
-  //check if user_id is castable to ObjectId
+  // Check if user_id is castable to ObjectId
   if (!req.params.user_id.match(/^[0-9a-fA-F]{24}$/)) {
     res.status(400);
     throw new Error("Not valid id");
   }
-  //check if user exists
+  // Check if user exists
   const user = await User.findById(req.params.user_id);
   if (!user) {
     res.status(404);
     throw new Error("User not found");
   }
-  //check if user is a member of the family
+  // Check if user is a member of the family
   if (!req.family.members.includes(req.params.user_id)) {
     res.status(400);
     throw new Error("User is not a member of the family");
   }
-  //check if user is already an admin
+  // Check if user is already an admin
   if (req.family.admins.includes(req.params.user_id)) {
     res.status(400);
     throw new Error("User is already an admin");
   }
-  //add user to admins
+  // Add user to admins
   req.family.admins.push(req.params.user_id);
   await req.family.save();
-  res.json({ message: "Admin added" });
+  // Return success message
+  res.status(200).json({ message: "Admin added" });
 });
 
 // @desc    Remove an admin from family
 // @route   DELETE /api/families/:family_id/admins/:user_id
 // @access  Private, familyAdmin
 const removeAdmin = asyncHandler(async (req, res) => {
-  //check if user_id is castable to ObjectId
+  // Check if user_id is castable to ObjectId
   if (!req.params.user_id.match(/^[0-9a-fA-F]{24}$/)) {
     res.status(400);
     throw new Error("Not valid id");
   }
-  //check if user exists
+  // Check if user exists
   const user = await User.findById(req.params.user_id);
   if (!user) {
     res.status(404);
     throw new Error("User not found");
   }
-  //check if user is the last admin
+  // Check if user is the last admin
   if (
     req.family.admins[0].toString() === req.params.user_id.toString() &&
     req.family.admins.length === 1
@@ -278,22 +303,27 @@ const removeAdmin = asyncHandler(async (req, res) => {
     res.status(400);
     throw new Error("Cannot remove last admin");
   }
-  //remove user from admins
+  // Remove user from admins
   req.family.admins = req.family.admins.filter(
     (admin) => admin.toString() !== req.params.user_id.toString()
   );
   await req.family.save();
-  res.json({ message: "Admin removed" });
+  // Return success message
+  res.status(200).json({ message: "Admin removed" });
 });
 
 // @desc    Delete family
 // @route   DELETE /api/families/:family_id
 // @access  Private, familyAdmin
 const deleteFamily = asyncHandler(async (req, res) => {
+  // Try to delete family
   const family = await Family.findByIdAndDelete(req.params.family_id);
+  // Check if it was deleted
   if (family) {
-    res.json({ message: "Family deleted" });
+    // Return success message if deleted
+    res.status(200).json({ message: "Family deleted" });
   } else {
+    // Return error if not found
     res.status(404);
     throw new Error("Family not found");
   }

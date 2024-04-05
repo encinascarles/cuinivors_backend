@@ -18,10 +18,12 @@ const recipeOwner = asyncHandler(async (req, res, next) => {
       req.recipe = recipe;
       next();
     } else {
+      // If the user is not the author of the recipe, return an error
       res.status(401);
       throw new Error("Not authorized as recipe owner");
     }
   } else {
+    // If the recipe is not found, return an error
     res.status(404);
     throw new Error("Recipe not found");
   }
@@ -58,14 +60,17 @@ const recipeAuthorized = asyncHandler(async (req, res, next) => {
         },
       });
       if (family) {
+        // Grant access if user is in a common family with the author
         req.recipe = recipe;
         next();
       } else {
+        // Return error if user is not authorized to view the recipe
         res.status(403);
         throw new Error("Not authorized for this recipe");
       }
     }
   } else {
+    // Return error if recipe is not found
     res.status(404);
     throw new Error("Recipe not found");
   }

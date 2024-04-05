@@ -1,18 +1,7 @@
 import supertest from "supertest";
 import { expect } from "chai";
 import app from "../backend/server.js";
-import {
-  loadUsers,
-  loadFamilies,
-  loadRecipes,
-  loadFixtures,
-  clearUsers,
-  clearFamilies,
-  clearRecipes,
-  clearFixtures,
-  refreshUsers,
-  refreshFixtures,
-} from "./fixtures/loadFixtures.js";
+import { refreshUsers, refreshFixtures } from "./fixtures/loadFixtures.js";
 import {
   userFixtures,
   familyFixtures,
@@ -280,6 +269,14 @@ describe("User API", () => {
         username: updatedUser.username,
         profile_image: userFixtures[0].profile_image,
       });
+    });
+
+    it("should return 400 if no data is provided", async function () {
+      // Update the user's profile without providing any data
+      const updateRes = await agent.put(profileURL);
+      // Check if the response is unsuccessful
+      expect(updateRes.statusCode).to.equal(400);
+      expect(updateRes.body.message).to.equal("Not valid data");
     });
 
     it("should return 401 if the user is not authenticated", async function () {

@@ -10,32 +10,33 @@ import Invite from "../models/inviteModel.js";
 // @access  Public
 const registerUser = asyncHandler(async (req, res) => {
   const { name, username, email, password } = req.body;
-  //check if user provided with correct data
+  // Check if user provided with correct data
   if (!name || !username || !email || !password) {
     res.status(400);
     throw new Error("Not valid data");
   }
-  //check if email already exists
+  // Check if email already exists
   const userExists = await User.findOne({ email });
   if (userExists) {
     res.status(400);
     throw new Error("User already exists with this email");
   }
-  //check if username already exists
+  // Check if username already exists
   const usernameExists = await User.findOne({ username });
   if (usernameExists) {
     res.status(400);
     throw new Error("User already exists with this username");
   }
-  //create new user
+  // Create new user
   const user = await User.create({
     name,
     email,
     password,
     username,
   });
-  //return user data and token
+  // Check if user was created
   if (user) {
+    // Return user data and token if user was created
     generateToken(res, user._id);
     res.status(201).json({
       message: "User created",
@@ -48,6 +49,7 @@ const registerUser = asyncHandler(async (req, res) => {
       },
     });
   } else {
+    // Return error if user was not created
     res.status(400);
     throw new Error("Invalid user data");
   }
@@ -58,15 +60,15 @@ const registerUser = asyncHandler(async (req, res) => {
 // @access  Public
 const authUser = asyncHandler(async (req, res) => {
   const { email, password } = req.body;
-  //check if user provided with correct data
+  // Check if user provided with correct data
   if (!email || !password) {
     res.status(400);
     throw new Error("Not valid data");
   }
-  //check if user exists and password matches
+  // Check if user exists and password matches
   const user = await User.findOne({ email });
   if (user && (await user.matchPassword(password))) {
-    //return user data and token
+    // Return user data and token if user exists and password matches
     generateToken(res, user._id);
     res.status(200).json({
       message: "User logged in",
@@ -79,6 +81,7 @@ const authUser = asyncHandler(async (req, res) => {
       },
     });
   } else {
+    // Return error if user does not exist or password does not match
     res.status(401);
     throw new Error("Invalid email or password");
   }
@@ -88,11 +91,12 @@ const authUser = asyncHandler(async (req, res) => {
 // @route   POST /api/users/logout
 // @access  Public
 const logoutUser = (req, res) => {
-  //clear cookie
+  // Clear cookie
   res.cookie("jwt", "", {
     httpOnly: true,
     expires: new Date(0),
   });
+  // Return success message
   res.status(200).json({ message: "Logged out successfully" });
 };
 
@@ -100,6 +104,7 @@ const logoutUser = (req, res) => {
 // @route   GET /api/users/profile
 // @access  Private
 const getUserProfile = asyncHandler(async (req, res) => {
+  // Return user data
   res.status(200).json({
     user: {
       _id: req.user._id,
@@ -116,7 +121,17 @@ const getUserProfile = asyncHandler(async (req, res) => {
 // @access  Private
 //todo implement image upload
 const updateUserProfile = asyncHandler(async (req, res) => {
-  //update user data
+  // Check if user provided at least one field to update
+  if (
+    !req.body.name &&
+    !req.body.email &&
+    !req.body.username &&
+    !req.body.password
+  ) {
+    res.status(400);
+    throw new Error("Not valid data");
+  }
+  // Update user data if provided
   req.user.name = req.body.name || req.user.name;
   req.user.email = req.body.email || req.user.email;
   req.user.username = req.body.username || req.user.username;
@@ -124,7 +139,7 @@ const updateUserProfile = asyncHandler(async (req, res) => {
     req.user.password = req.body.password;
   }
   const updatedUser = await req.user.save();
-  //return updated user data
+  // Return updated user data
   res.status(200).json({
     message: "User updated",
     user: {
@@ -141,14 +156,16 @@ const updateUserProfile = asyncHandler(async (req, res) => {
 // @route   GET /api/users/profile/:user_id
 // @access  Public
 const getUserProfileById = asyncHandler(async (req, res) => {
-  //check if user_id is castable to ObjectId
+  // Check if user_id is castable to ObjectId
   if (!req.params.user_id.match(/^[0-9a-fA-F]{24}$/)) {
     res.status(400);
     throw new Error("Not valid id");
   }
-  //find user
+  // Find user
   const user = await User.findById(req.params.user_id);
+  // Check if user exists
   if (user) {
+    // Return user data if user exists
     res.status(200).json({
       user: {
         _id: user._id,
@@ -159,6 +176,7 @@ const getUserProfileById = asyncHandler(async (req, res) => {
       },
     });
   } else {
+    // Return error if user does not exist
     res.status(404);
     throw new Error("User not found");
   }
@@ -168,7 +186,9 @@ const getUserProfileById = asyncHandler(async (req, res) => {
 // @route   GET /api/users/families
 // @access  Private
 const getUserFamilies = asyncHandler(async (req, res) => {
+  // Find families where user is a member
   const families = await Family.find({ members: req.user._id });
+  // Return families data
   res.status(200).json({ families });
 });
 
@@ -176,7 +196,9 @@ const getUserFamilies = asyncHandler(async (req, res) => {
 // @route   GET /api/users/recipes
 // @access  Private
 const getUserRecipes = asyncHandler(async (req, res) => {
+  // Find recipes where user is the author
   const recipes = await Recipe.find({ author_id: req.user._id });
+  // Return recipes data
   res.status(200).json({ recipes });
 });
 
@@ -184,13 +206,13 @@ const getUserRecipes = asyncHandler(async (req, res) => {
 // @route   DELETE /api/users/
 // @access  Private
 const deleteUser = asyncHandler(async (req, res) => {
-  //delete user recipes
+  // Delete user recipes
   await Recipe.deleteMany({ author_id: req.user._id });
-  //delete invites where user is invited or inviter
+  // Delete invites where user is invited or inviter
   await Invite.deleteMany({
     $or: [{ invited_user_id: req.user._id }, { inviter_user_id: req.user._id }],
   });
-  //delete user from families, if user is last admin, delete family
+  // Delete user from families, if user is last admin, delete family
   const families = await Family.find({ members: req.user._id });
   for (let family of families) {
     if (
@@ -208,7 +230,7 @@ const deleteUser = asyncHandler(async (req, res) => {
       await family.save();
     }
   }
-  //delete user
+  // Delete user
   const user = await User.findByIdAndDelete(req.user._id);
   if (user) {
     res.status(200).json({

@@ -24,7 +24,7 @@ app.use("/api/recipes", recipeRoutes);
 app.use("/api/families", familyRoutes);
 app.use("/api/invites", inviteRoutes);
 
-//error handler
+//error handlers
 app.use(notFound);
 app.use(errorHandler);
 

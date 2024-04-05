@@ -48,6 +48,7 @@ describe("Family API", () => {
       const res = await agent.post(familyURL).send(familyData);
       // Check if the response is successful
       expect(res.statusCode).to.equal(201);
+      expect(res.body.message).to.equal("Family created");
       expect(res.body.family).to.have.property("_id");
       expect(res.body.family.name).to.equal(familyData.name);
       expect(res.body.family.description).to.equal(familyData.description);
@@ -162,6 +163,47 @@ describe("Family API", () => {
       expect(updatedFamilyInDb).to.include({
         name: familyData.name,
         description: familyData.description,
+      });
+      it("should return 400 if the family ID is not valid", async () => {
+        // Update a family with an invalid ID
+        const res = await agent.put(familyURL + "non-castable-id").send({
+          name: "Updated Family",
+          description: "This is an updated family",
+        });
+        // Check if the response is unsuccessful
+        expect(res.statusCode).to.equal(400);
+        expect(res.body.message).to.equal("Not valid id");
+      });
+      it("should return 401 if the user is not authenticated", async () => {
+        // Update the family without authentication
+        const res = await supertest(app)
+          .put(familyURL + familyFixtures[0]._id)
+          .send({
+            name: "Updated Family",
+            description: "This is an updated family",
+          });
+        // Check if the response is unsuccessful
+        expect(res.statusCode).to.equal(401);
+        expect(res.body.message).to.equal("Not authorized, no token");
+      });
+      it("should return 404 if the family does not exist", async () => {
+        // Update a non-existent family
+        const res = await agent
+          .put(familyURL + "660f0cfe6e4cca00864e4c99")
+          .send({
+            name: "Updated Family",
+            description: "This is an updated family",
+          });
+        // Check if the response is unsuccessful
+        expect(res.statusCode).to.equal(404);
+        expect(res.body.message).to.equal("Family not found");
+      });
+      it("should return 400 if no data is provided", async () => {
+        // Update the family with no data
+        const res = await agent.put(familyURL + familyFixtures[0]._id);
+        // Check if the response is unsuccessful
+        expect(res.statusCode).to.equal(400);
+        expect(res.body.message).to.equal("Not valid data");
       });
     });
 
@@ -337,14 +379,14 @@ describe("Family API", () => {
       await login(userFixtures[0]);
     });
 
-    it("should return the family recipes", async () => {
+    it("should return the family recipes (not the private ones)", async () => {
       // Get the family recipes
       const recipesRes = await agent.get(
         familyURL + familyFixtures[0]._id + "/recipes"
       );
       // Check if the response is successful
       expect(recipesRes.statusCode).to.equal(200);
-      expect(recipesRes.body.recipes).to.have.lengthOf(3);
+      expect(recipesRes.body.recipes).to.have.lengthOf(2); //2 excludes the private recipes
       expect(recipesRes.body.recipes[0]).to.deep.include({
         _id: recipeFixtures[0]._id.toString(),
         name: recipeFixtures[0].name,
@@ -390,12 +432,12 @@ describe("Family API", () => {
       await login(userFixtures[0]);
     });
 
-    it("should return all user families recipes", async () => {
+    it("should return all user families recipes (not the private ones)", async () => {
       // Get all user families recipes
       const recipesRes = await agent.get(familyURL + "recipes");
       // Check if the response is successful
       expect(recipesRes.statusCode).to.equal(200);
-      expect(recipesRes.body.recipes).to.have.lengthOf(4);
+      expect(recipesRes.body.recipes).to.have.lengthOf(3); //3 excludes the private recipes
       expect(recipesRes.body.recipes[0]).to.deep.include({
         _id: recipeFixtures[0]._id.toString(),
         name: recipeFixtures[0].name,

@@ -21,9 +21,8 @@ const addRecipe = asyncHandler(async (req, res) => {
     res.status(400);
     throw new Error("Not valid data, data missing");
   }
-  // Declare the variables
-  let newRecipe = {};
   // Get the data from the request
+  let newRecipe = {};
   try {
     newRecipe.name = req.body.name;
     newRecipe.prep_time = Number(req.body.prep_time);
@@ -39,7 +38,7 @@ const addRecipe = asyncHandler(async (req, res) => {
     res.status(400);
     throw new Error("Invalid recipe data, not parsable");
   }
-  //Check if the user provided an image
+  // Handle the image upload if the user provided one
   if (req.file) {
     try {
       newRecipe.recipe_image = await uploadFileToBlob(req.file);
@@ -53,8 +52,9 @@ const addRecipe = asyncHandler(async (req, res) => {
     ...newRecipe,
     author_id: req.user._id,
   });
-  // Send the recipe data
+  // Check if the recipe was created
   if (recipe) {
+    // Send the recipe data if the recipe was created
     res.status(201).json({
       message: "Recipe created",
       recipe: {
@@ -71,6 +71,7 @@ const addRecipe = asyncHandler(async (req, res) => {
       },
     });
   } else {
+    // Send an error if the recipe was not created
     res.status(400);
     throw new Error("Invalid recipe data");
   }
@@ -83,7 +84,7 @@ const getRecipe = asyncHandler(async (req, res) => {
   // Find recipe creator
   const author = await User.findById(req.recipe.author_id);
   // Send the recipe data
-  res.json({
+  res.status(200).json({
     recipe: {
       _id: req.recipe._id,
       name: req.recipe.name,
@@ -104,9 +105,8 @@ const getRecipe = asyncHandler(async (req, res) => {
 // @route   PUT /api/recipes/:recipe_id
 // @access  Private, recipeOwner
 const editRecipe = asyncHandler(async (req, res) => {
-  // Declare the variables
-  let recipe = {};
   // Get the data from the request
+  let recipe = {};
   try {
     if (req.body.name) recipe.name = req.body.name;
     if (req.body.prep_time) recipe.prep_time = Number(req.body.prep_time);
@@ -122,7 +122,7 @@ const editRecipe = asyncHandler(async (req, res) => {
     res.status(400);
     throw new Error("Invalid recipe data, not parsable");
   }
-  //Check if the user provided an image
+  //Handle the image upload if the user provided one
   if (req.file) {
     try {
       recipe.recipe_image = await uploadFileToBlob(req.file);
@@ -137,8 +137,9 @@ const editRecipe = asyncHandler(async (req, res) => {
     { $set: recipe },
     { new: true }
   );
-  // Send the updated recipe data
+  // Check if the recipe was updated
   if (updatedRecipe) {
+    // Send the updated recipe data if the recipe was updated
     res.json({
       message: "Recipe updated",
       recipe: {
@@ -155,6 +156,7 @@ const editRecipe = asyncHandler(async (req, res) => {
       },
     });
   } else {
+    // Send an error if the recipe was not updated
     res.status(400);
     throw new Error("Invalid recipe data");
   }
@@ -164,8 +166,10 @@ const editRecipe = asyncHandler(async (req, res) => {
 // @route   GET /api/recipes/public
 // @access  Public
 const getPublicRecipes = asyncHandler(async (req, res) => {
+  // Find all public recipes
   const recipes = await Recipe.find({ visibility: "public" });
-  res.json({
+  // Send the recipes data
+  res.status(200).json({
     recipes: recipes.map((recipe) => {
       return {
         _id: recipe._id,
@@ -186,12 +190,15 @@ const getPublicRecipes = asyncHandler(async (req, res) => {
 // @route   PUT /api/recipes/:recipe_id/favorite
 // @access  Private, recipeAuthorized
 const addFavorite = asyncHandler(async (req, res) => {
+  // Check if the recipe is already in favorites
   if (req.user.favorites.includes(req.recipe._id)) {
     res.status(400);
     throw new Error("Recipe already in favorites");
   }
+  // Add the recipe to favorites
   req.user.favorites.push(req.recipe._id);
   await req.user.save();
+  // Send a success message
   res.status(200).json({ message: "Recipe added to favorites" });
 });
 
@@ -199,14 +206,17 @@ const addFavorite = asyncHandler(async (req, res) => {
 // @route   DELETE /api/recipes/:recipe_id/favorite
 // @access  Private, recipeAuthorized
 const removeFavorite = asyncHandler(async (req, res) => {
+  // Check if the recipe is in favorites
   if (!req.user.favorites.includes(req.recipe._id)) {
     res.status(400);
     throw new Error("Recipe not in favorites");
   }
+  // Remove the recipe from favorites
   req.user.favorites = req.user.favorites.filter(
     (recipe) => recipe.toString() !== req.recipe._id.toString()
   );
   await req.user.save();
+  // Send a success message
   res.status(200).json({ message: "Recipe removed from favorites" });
 });
 
@@ -214,10 +224,14 @@ const removeFavorite = asyncHandler(async (req, res) => {
 // @route   DELETE /api/recipes/:recipe_id
 // @access  Private, recipeOwner
 const deleteRecipe = asyncHandler(async (req, res) => {
+  // Delete the recipe
   const recipe = await Recipe.findByIdAndDelete(req.recipe._id);
+  // Check if the recipe was deleted
   if (recipe) {
-    res.json({ message: "Recipe deleted" });
+    // Send a success message if the recipe was deleted
+    res.status(200).json({ message: "Recipe deleted" });
   } else {
+    // Send an error if the recipe was not deleted
     res.status(404);
     throw new Error("Recipe not found");
   }
