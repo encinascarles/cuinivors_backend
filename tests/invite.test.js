@@ -117,6 +117,17 @@ describe("Invite API", () => {
       expect(res.body.message).to.equal("User has already been invited");
     });
 
+    it("should return 403 if the inviter user is not in the family", async function () {
+      // Create the invite with a user that is not in the family
+      const res = await agent.post(inviteURL).send({
+        family_id: familyFixtures[2]._id,
+        invited_username: userFixtures[3].username,
+      });
+      // Check if the response is unsuccessful
+      expect(res.statusCode).to.equal(403);
+      expect(res.body.message).to.equal("Not authorized");
+    });
+
     it("should return 400 if the id is not valid", async function () {
       // Create the invite with a non-castable family_id
       const res = await agent.post(inviteURL).send({
@@ -125,7 +136,7 @@ describe("Invite API", () => {
       });
       // Check if the response is unsuccessful
       expect(res.statusCode).to.equal(400);
-      expect(res.body.message).to.equal("Not valid id");
+      expect(res.body.message).to.equal("Not valid data");
     });
   });
 
@@ -192,7 +203,7 @@ describe("Invite API", () => {
       const res = await agent.post(inviteURL + "non-castable-id/accept");
       // Check if the response is unsuccessful
       expect(res.statusCode).to.equal(400);
-      expect(res.body.message).to.equal("Not valid id");
+      expect(res.body.message).to.equal("Not valid data");
     });
 
     it("should return 401 if the user is not the invited user", async function () {
@@ -242,7 +253,7 @@ describe("Invite API", () => {
       const res = await agent.post(inviteURL + "non-castable-id/decline");
       // Check if the response is unsuccessful
       expect(res.statusCode).to.equal(400);
-      expect(res.body.message).to.equal("Not valid id");
+      expect(res.body.message).to.equal("Not valid data");
     });
 
     it("should return 401 if the user is not the invited user", async function () {

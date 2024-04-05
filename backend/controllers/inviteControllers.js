@@ -8,16 +8,6 @@ import Invite from "../models/inviteModel.js";
 // @access  Private
 const createInvite = asyncHandler(async (req, res) => {
   const { family_id, invited_username } = req.body;
-  // Check if user provided the required data
-  if (!family_id || !invited_username) {
-    res.status(400);
-    throw new Error("Not valid data");
-  }
-  // Check if family_id is castable to ObjectId
-  if (!family_id.match(/^[0-9a-fA-F]{24}$/)) {
-    res.status(400);
-    throw new Error("Not valid id");
-  }
   // Find user
   const user = await User.findOne({ username: invited_username });
   if (!user) {
@@ -29,6 +19,11 @@ const createInvite = asyncHandler(async (req, res) => {
   if (!family) {
     res.status(404);
     throw new Error("Family not found");
+  }
+  // Check if inviter is in family
+  if (!family.members.includes(req.user._id)) {
+    res.status(403);
+    throw new Error("Not authorized");
   }
   // Check if user is already in family
   if (family.members.includes(user._id)) {
@@ -76,11 +71,6 @@ const listInvites = asyncHandler(async (req, res) => {
 // @route   POST /api/invites/:invite_id/accept
 // @access  Private
 const acceptInvite = asyncHandler(async (req, res) => {
-  // Check if invite_id is castable to ObjectId
-  if (!req.params.invite_id.match(/^[0-9a-fA-F]{24}$/)) {
-    res.status(400);
-    throw new Error("Not valid id");
-  }
   // Find invite
   const invite = await Invite.findById(req.params.invite_id);
   if (!invite) {
@@ -111,11 +101,6 @@ const acceptInvite = asyncHandler(async (req, res) => {
 // @route   POST /api/invites/:invite_id/decline
 // @access  Private
 const declineInvite = asyncHandler(async (req, res) => {
-  // Check if invite_id is castable to ObjectId
-  if (!req.params.invite_id.match(/^[0-9a-fA-F]{24}$/)) {
-    res.status(400);
-    throw new Error("Not valid id");
-  }
   // Find invite
   const invite = await Invite.findById(req.params.invite_id);
   if (!invite) {
