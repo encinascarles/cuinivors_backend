@@ -13,6 +13,7 @@ import {
 import multer from "multer";
 import { protect } from "../middleware/authMiddleware.js";
 import { body, param } from "express-validator";
+import { validateRequest } from "../middleware/validationMiddleware.js";
 
 const upload = multer({ storage: multer.memoryStorage() });
 
@@ -32,13 +33,12 @@ const userUpdateValidation = [
   body("username").optional().not().isEmpty(),
   body("password").optional().isLength({ min: 8 }),
 ];
-
 const userIdValidation = [param("user_id").isMongoId()];
 
 const router = express.Router();
 
-router.post("/register", userRegisterValidation, registerUser);
-router.post("/auth", userLoginValidation, authUser);
+router.post("/register", userRegisterValidation, validateRequest, registerUser);
+router.post("/auth", userLoginValidation, validateRequest, authUser);
 router.post("/logout", logoutUser);
 router
   .route("/profile")
@@ -46,10 +46,16 @@ router
   .put(
     protect,
     userUpdateValidation,
+    validateRequest,
     upload.single("profile_image"),
     updateUserProfile
   );
-router.get("/profile/:user_id", userIdValidation, getUserProfileById);
+router.get(
+  "/profile/:user_id",
+  userIdValidation,
+  validateRequest,
+  getUserProfileById
+);
 router.get("/families", protect, getUserFamilies);
 router.get("/recipes", protect, getUserRecipes);
 router.delete("/", protect, deleteUser);

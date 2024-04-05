@@ -10,12 +10,6 @@ import { validationResult } from "express-validator";
 // @route   POST /api/users/register
 // @access  Public
 const registerUser = asyncHandler(async (req, res) => {
-  // Validate user data
-  const errors = validationResult(req);
-  if (!errors.isEmpty()) {
-    res.status(400);
-    throw new Error("Not valid data");
-  }
   // Get user data
   const { name, username, email, password } = req.body;
   // Check if email already exists
@@ -62,12 +56,6 @@ const registerUser = asyncHandler(async (req, res) => {
 // @route   POST /api/users/auth
 // @access  Public
 const authUser = asyncHandler(async (req, res) => {
-  // Validate user data
-  const errors = validationResult(req);
-  if (!errors.isEmpty()) {
-    res.status(400);
-    throw new Error("Not valid data");
-  }
   // Get user data
   const { email, password } = req.body;
   // Check if user exists and password matches
@@ -126,12 +114,6 @@ const getUserProfile = asyncHandler(async (req, res) => {
 // @access  Private
 //todo implement image upload
 const updateUserProfile = asyncHandler(async (req, res) => {
-  // Validate user data
-  const errors = validationResult(req);
-  if (!errors.isEmpty()) {
-    res.status(400);
-    throw new Error("Not valid data");
-  }
   // Check if email already exists for another user
   if (req.body.email) {
     const emailExists = await User.findOne({
@@ -202,12 +184,6 @@ const updateUserProfile = asyncHandler(async (req, res) => {
 // @route   GET /api/users/profile/:user_id
 // @access  Public
 const getUserProfileById = asyncHandler(async (req, res) => {
-  // Validate user data
-  const errors = validationResult(req);
-  if (!errors.isEmpty()) {
-    res.status(400);
-    throw new Error("Not valid id");
-  }
   // Find user
   const user = await User.findById(req.params.user_id);
   // Check if user exists

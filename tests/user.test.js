@@ -401,7 +401,7 @@ describe("User API", () => {
       const profileRes = await agent.get(profileURL + "/non-castable-id");
       // Check if the response is unsuccessful
       expect(profileRes.statusCode).to.equal(400);
-      expect(profileRes.body.message).to.equal("Not valid id");
+      expect(profileRes.body.message).to.equal("Not valid data");
     });
   });
 
