@@ -4,17 +4,20 @@ import generateToken from "../utils/generateToken.js";
 import Family from "../models/familyModel.js";
 import Recipe from "../models/recipeModel.js";
 import Invite from "../models/inviteModel.js";
+import { validationResult } from "express-validator";
 
 // @desc    Register a new user
 // @route   POST /api/users/register
 // @access  Public
 const registerUser = asyncHandler(async (req, res) => {
-  const { name, username, email, password } = req.body;
-  // Check if user provided with correct data
-  if (!name || !username || !email || !password) {
+  // Validate user data
+  const errors = validationResult(req);
+  if (!errors.isEmpty()) {
     res.status(400);
     throw new Error("Not valid data");
   }
+  // Get user data
+  const { name, username, email, password } = req.body;
   // Check if email already exists
   const userExists = await User.findOne({ email });
   if (userExists) {
@@ -59,12 +62,14 @@ const registerUser = asyncHandler(async (req, res) => {
 // @route   POST /api/users/auth
 // @access  Public
 const authUser = asyncHandler(async (req, res) => {
-  const { email, password } = req.body;
-  // Check if user provided with correct data
-  if (!email || !password) {
+  // Validate user data
+  const errors = validationResult(req);
+  if (!errors.isEmpty()) {
     res.status(400);
     throw new Error("Not valid data");
   }
+  // Get user data
+  const { email, password } = req.body;
   // Check if user exists and password matches
   const user = await User.findOne({ email });
   if (user && (await user.matchPassword(password))) {
@@ -121,15 +126,33 @@ const getUserProfile = asyncHandler(async (req, res) => {
 // @access  Private
 //todo implement image upload
 const updateUserProfile = asyncHandler(async (req, res) => {
-  // Check if user provided at least one field to update
-  if (
-    !req.body.name &&
-    !req.body.email &&
-    !req.body.username &&
-    !req.body.password
-  ) {
+  // Validate user data
+  const errors = validationResult(req);
+  if (!errors.isEmpty()) {
     res.status(400);
     throw new Error("Not valid data");
+  }
+  // Check if email already exists for another user
+  if (req.body.email) {
+    const emailExists = await User.findOne({
+      email: req.body.email,
+      _id: { $ne: req.user._id },
+    });
+    if (emailExists) {
+      res.status(400);
+      throw new Error("User already exists with this email");
+    }
+  }
+  // Check if username already exists for another user
+  if (req.body.username) {
+    const usernameExists = await User.findOne({
+      username: req.body.username,
+      _id: { $ne: req.user._id },
+    });
+    if (usernameExists) {
+      res.status(400);
+      throw new Error("User already exists with this username");
+    }
   }
   // Update user data if provided
   req.user.name = req.body.name || req.user.name;
@@ -179,8 +202,9 @@ const updateUserProfile = asyncHandler(async (req, res) => {
 // @route   GET /api/users/profile/:user_id
 // @access  Public
 const getUserProfileById = asyncHandler(async (req, res) => {
-  // Check if user_id is castable to ObjectId
-  if (!req.params.user_id.match(/^[0-9a-fA-F]{24}$/)) {
+  // Validate user data
+  const errors = validationResult(req);
+  if (!errors.isEmpty()) {
     res.status(400);
     throw new Error("Not valid id");
   }

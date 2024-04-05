@@ -76,7 +76,45 @@ describe("User API", () => {
       expect(res.headers["set-cookie"]).to.exist;
     });
 
-    it("should return 400 (User already exists with this email) if email already exists", async function () {
+    it("should return 400 if some data is missing", async function () {
+      // Create the user without the name
+      const res = await agent.post(registerURL).send({
+        email: newUser.email,
+        password: newUser.password,
+        username: newUser.username,
+      });
+      // Check if the response is unsuccessful
+      expect(res.statusCode).to.equal(400);
+      expect(res.body.message).to.equal("Not valid data");
+    });
+
+    it("should return 400 if password is less than 8 characters", async function () {
+      // Create the user with a password less than 8 characters
+      const res = await agent.post(registerURL).send({
+        name: newUser.name,
+        email: newUser.email,
+        password: "short",
+        username: newUser.username,
+      });
+      // Check if the response is unsuccessful
+      expect(res.statusCode).to.equal(400);
+      expect(res.body.message).to.equal("Not valid data");
+    });
+
+    it("should return 400 if email is not valid", async function () {
+      // Create the user with an invalid email
+      const res = await agent.post(registerURL).send({
+        name: newUser.name,
+        email: "invalid",
+        password: newUser.password,
+        username: newUser.username,
+      });
+      // Check if the response is unsuccessful
+      expect(res.statusCode).to.equal(400);
+      expect(res.body.message).to.equal("Not valid data");
+    });
+
+    it("should return 400 if email already exists", async function () {
       // Create the user with an email that already exists
       const res = await agent.post(registerURL).send({
         name: newUser.name,
@@ -89,7 +127,7 @@ describe("User API", () => {
       expect(res.body.message).to.equal("User already exists with this email");
     });
 
-    it("should return 400 (Username already taken) if username already exists", async function () {
+    it("should return 400 if username already exists", async function () {
       // Create the user with a username that already exists
       const res = await agent.post(registerURL).send({
         name: newUser.name,
@@ -102,18 +140,6 @@ describe("User API", () => {
       expect(res.body.message).to.equal(
         "User already exists with this username"
       );
-    });
-
-    it("should return 400 if some data is missing", async function () {
-      // Create the user without the name
-      const res = await agent.post(registerURL).send({
-        email: newUser.email,
-        password: newUser.password,
-        username: newUser.username,
-      });
-      // Check if the response is unsuccessful
-      expect(res.statusCode).to.equal(400);
-      expect(res.body.message).to.equal("Not valid data");
     });
   });
 
@@ -153,7 +179,18 @@ describe("User API", () => {
       expect(res.body.message).to.equal("Not valid data");
     });
 
-    it("should return 401 if email is incorrect", async function () {
+    it("should return 400 if password is less than 8 characters", async function () {
+      // Login with password less than 8 characters
+      const res = await agent.post(loginURL).send({
+        email: userFixtures[0].email,
+        password: "short",
+      });
+      // Check if the response is unsuccessful
+      expect(res.statusCode).to.equal(400);
+      expect(res.body.message).to.equal("Not valid data");
+    });
+
+    it("should return 401 if email doesn't exist", async function () {
       // Login with incorrect email
       const res = await agent.post(loginURL).send({
         email: "incorrect@example.com",
@@ -173,6 +210,17 @@ describe("User API", () => {
       // Check if the response is unsuccessful
       expect(res.statusCode).to.equal(401);
       expect(res.body.message).to.equal("Invalid email or password");
+    });
+
+    it("should return 400 if email is not valid", async function () {
+      // Login with invalid email
+      const res = await agent.post(loginURL).send({
+        email: "invalid",
+        password: userFixtures[0].password,
+      });
+      // Check if the response is unsuccessful
+      expect(res.statusCode).to.equal(400);
+      expect(res.body.message).to.equal("Not valid data");
     });
   });
 
@@ -271,12 +319,52 @@ describe("User API", () => {
       });
     });
 
-    it("should return 400 if no data is provided", async function () {
-      // Update the user's profile without providing any data
-      const updateRes = await agent.put(profileURL);
+    it("should return 400 if email is not valid", async function () {
+      // Update the user's profile with an invalid email
+      const updateRes = await agent.put(profileURL).send({
+        ...updatedUser,
+        email: "invalid",
+      });
       // Check if the response is unsuccessful
       expect(updateRes.statusCode).to.equal(400);
       expect(updateRes.body.message).to.equal("Not valid data");
+    });
+
+    it("should return 400 if password is less than 8 characters", async function () {
+      // Update the user's profile with a password less than 8 characters
+      const updateRes = await agent.put(profileURL).send({
+        ...updatedUser,
+        password: "short",
+      });
+      // Check if the response is unsuccessful
+      expect(updateRes.statusCode).to.equal(400);
+      expect(updateRes.body.message).to.equal("Not valid data");
+    });
+
+    it("should return 400 if email already exists", async function () {
+      // Update the user's profile with an email that already exists
+      const updateRes = await agent.put(profileURL).send({
+        ...updatedUser,
+        email: userFixtures[1].email,
+      });
+      // Check if the response is unsuccessful
+      expect(updateRes.statusCode).to.equal(400);
+      expect(updateRes.body.message).to.equal(
+        "User already exists with this email"
+      );
+    });
+
+    it("should return 400 if username already exists", async function () {
+      // Update the user's profile with a username that already exists
+      const updateRes = await agent.put(profileURL).send({
+        ...updatedUser,
+        username: userFixtures[1].username,
+      });
+      // Check if the response is unsuccessful
+      expect(updateRes.statusCode).to.equal(400);
+      expect(updateRes.body.message).to.equal(
+        "User already exists with this username"
+      );
     });
 
     it("should return 401 if the user is not authenticated", async function () {
