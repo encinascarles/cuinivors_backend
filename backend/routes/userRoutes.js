@@ -8,6 +8,7 @@ import {
   getUserFamilies,
   getUserRecipes,
   updateUserProfile,
+  getUserFavorites,
   deleteUser,
 } from "../controllers/userControllers.js";
 import multer from "multer";
@@ -58,6 +59,7 @@ router.get(
 );
 router.get("/families", protect, getUserFamilies);
 router.get("/recipes", protect, getUserRecipes);
+router.get("/favorites", protect, getUserFavorites);
 router.delete("/", protect, deleteUser);
 
 export default router;

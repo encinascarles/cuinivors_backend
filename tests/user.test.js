@@ -1,7 +1,11 @@
 import supertest from "supertest";
 import { expect } from "chai";
 import app from "../backend/server.js";
-import { refreshUsers, refreshFixtures } from "./fixtures/loadFixtures.js";
+import {
+  refreshUsers,
+  refreshRecipes,
+  refreshFixtures,
+} from "./fixtures/loadFixtures.js";
 import {
   userFixtures,
   familyFixtures,
@@ -462,6 +466,66 @@ describe("User API", () => {
       // Check if the response is unsuccessful
       expect(recipesRes.statusCode).to.equal(401);
       expect(recipesRes.body.message).to.equal("Not authorized, no token");
+    });
+  });
+
+  describe("Get user favorites: GET /api/users/favorites", () => {
+    before(async function () {
+      await login(userFixtures[0]);
+    });
+    afterEach(async function () {
+      await refreshUsers();
+      await refreshRecipes();
+    });
+
+    it("should return the user's favorite recipes", async function () {
+      // Get the user's favorite recipes
+      const favoritesRes = await agent.get("/api/users/favorites");
+      // Check if the response is successful
+      expect(favoritesRes.statusCode).to.equal(200);
+      expect(favoritesRes.body.recipes).to.have.lengthOf(1);
+      expect(favoritesRes.body.recipes[0]).to.deep.include({
+        name: recipeFixtures[0].name,
+        prep_time: recipeFixtures[0].prep_time,
+        total_time: recipeFixtures[0].total_time,
+        ingredients: recipeFixtures[0].ingredients,
+        steps: recipeFixtures[0].steps,
+        recommendations: recipeFixtures[0].recommendations,
+        origin: recipeFixtures[0].origin,
+        recipe_image: recipeFixtures[0].recipe_image,
+        visibility: recipeFixtures[0].visibility,
+      });
+    });
+
+    it("should remove the recipe from the user's favorites if it is deleted", async function () {
+      // Delete the recipe
+      await Recipe.deleteOne({ _id: recipeFixtures[0]._id });
+      // Get the user's favorite recipes
+      const favoritesRes = await agent.get("/api/users/favorites");
+      // Check if the response is successful
+      expect(favoritesRes.statusCode).to.equal(200);
+      expect(favoritesRes.body.recipes).to.have.lengthOf(0);
+    });
+
+    it("should remove the recipe from the user's favorites if he has no access anymore", async function () {
+      // Add a non accessible recipe to the user's favorites
+      await User.updateOne(
+        { _id: userFixtures[0]._id },
+        { $push: { favorites: recipeFixtures[2]._id } }
+      );
+      // Get the user's favorite recipes
+      const favoritesRes = await agent.get("/api/users/favorites");
+      // Check if the response is successful
+      expect(favoritesRes.statusCode).to.equal(200);
+      expect(favoritesRes.body.recipes).to.have.lengthOf(1);
+    });
+
+    it("should return 401 if the user is not authenticated", async function () {
+      // Get the user's favorite recipes without logging in
+      const favoritesRes = await supertest(app).get("/api/users/favorites");
+      // Check if the response is unsuccessful
+      expect(favoritesRes.statusCode).to.equal(401);
+      expect(favoritesRes.body.message).to.equal("Not authorized, no token");
     });
   });
 

@@ -4,7 +4,6 @@ import generateToken from "../utils/generateToken.js";
 import Family from "../models/familyModel.js";
 import Recipe from "../models/recipeModel.js";
 import Invite from "../models/inviteModel.js";
-import { validationResult } from "express-validator";
 
 // @desc    Register a new user
 // @route   POST /api/users/register
@@ -225,6 +224,56 @@ const getUserRecipes = asyncHandler(async (req, res) => {
   res.status(200).json({ recipes });
 });
 
+// @desc    Get user favorite recipes
+// @route   GET /api/users/favorites
+// @access  Private
+const getUserFavorites = asyncHandler(async (req, res) => {
+  // Initialize an empty array to store the valid recipes
+  let validRecipes = [];
+  // Loop through each favorite recipe
+  for (let favorite of req.user.favorites) {
+    // Find the recipe in the database
+    const recipe = await Recipe.findById(favorite);
+    // If the recipe is null, it has been deleted from the database
+    if (!recipe) {
+      // Remove the recipe from the user's favorites
+      req.user.favorites = req.user.favorites.filter(
+        (fav) => fav.toString() !== favorite.toString()
+      );
+      await req.user.save();
+    } else {
+      // Check if the user is the recipe author or recipe is public
+      if (
+        recipe.author_id.toString() === req.user._id.toString() ||
+        recipe.visibility === "public"
+      ) {
+        // Add the recipe to the valid recipes array
+        validRecipes.push(recipe);
+      } else {
+        // Look if user is in a common family with author
+        const family = await Family.findOne({
+          members: {
+            $all: [recipe.author_id, req.user._id],
+          },
+        });
+        if (family && recipe.visibility !== "private") {
+          // Add the recipe to the valid recipes array
+          validRecipes.push(recipe);
+        } else {
+          // Remove the recipe from the user's favorites
+          req.user.favorites = req.user.favorites.filter(
+            (fav) => fav.toString() !== favorite.toString()
+          );
+          await req.user.save();
+        }
+      }
+    }
+  }
+
+  // Return the valid recipes data
+  res.status(200).json({ recipes: validRecipes });
+});
+
 // @desc    Delete User
 // @route   DELETE /api/users/
 // @access  Private
@@ -274,5 +323,6 @@ export {
   getUserFamilies,
   getUserRecipes,
   updateUserProfile,
+  getUserFavorites,
   deleteUser,
 };
