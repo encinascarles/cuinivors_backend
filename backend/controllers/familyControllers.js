@@ -9,10 +9,11 @@ import Recipe from "../models/recipeModel.js";
 // @access  Private
 const createFamily = asyncHandler(async (req, res) => {
   const { name, description } = req.body;
-  // Check if user provided with the required data
-  if (!name || !description) {
+  // Check it exists family with the same name
+  const familyExists = await Family.findOne({ name: name });
+  if (familyExists) {
     res.status(400);
-    throw new Error("Not valid data");
+    throw new Error("Family with this name already exists");
   }
   // Create family
   const family = await Family.create({
@@ -77,11 +78,6 @@ const getFamilyById = asyncHandler(async (req, res) => {
 // @route   PUT /api/families/:family_id
 // @access  Private, familyAdmin
 const modifyFamily = asyncHandler(async (req, res) => {
-  // Check if user provided at least one field to update
-  if (!req.body.name && !req.body.description && !req.file) {
-    res.status(400);
-    throw new Error("Not valid data");
-  }
   // Edit family name and description if provided
   req.family.name = req.body.name || req.family.name;
   req.family.description = req.body.description || req.family.description;
@@ -149,11 +145,6 @@ const listMembers = asyncHandler(async (req, res) => {
 // @route   DELETE /api/families/:family_id/members/:user_id
 // @access  Private, familyAdmin
 const removeMember = asyncHandler(async (req, res) => {
-  // Check if user_id is castable to ObjectId
-  if (!req.params.user_id.match(/^[0-9a-fA-F]{24}$/)) {
-    res.status(400);
-    throw new Error("Not valid id");
-  }
   // Check if user is trying to remove himself
   if (req.user._id.toString() === req.params.user_id.toString()) {
     res.status(400);
@@ -209,6 +200,11 @@ const listRecipes = asyncHandler(async (req, res) => {
 const listAllFamiliesRecipes = asyncHandler(async (req, res) => {
   // Find all families where user is a member
   const families = await Family.find({ members: req.user._id });
+  // Check if user is not in any family
+  if (families.length === 0) {
+    res.status(400);
+    throw new Error("User is not a member of any family");
+  }
   // Find all non private recipes where author_id is member of a shared family
   const familyMembers = [].concat(...families.map((family) => family.members));
   const recipes = await Recipe.find({
@@ -266,11 +262,6 @@ const leaveFamily = asyncHandler(async (req, res) => {
 // @route   POST /api/families/:family_id/admins/:user_id
 // @access  Private, familyAdmin
 const addAdmin = asyncHandler(async (req, res) => {
-  // Check if user_id is castable to ObjectId
-  if (!req.params.user_id.match(/^[0-9a-fA-F]{24}$/)) {
-    res.status(400);
-    throw new Error("Not valid id");
-  }
   // Check if user exists
   const user = await User.findById(req.params.user_id);
   if (!user) {
@@ -298,11 +289,6 @@ const addAdmin = asyncHandler(async (req, res) => {
 // @route   DELETE /api/families/:family_id/admins/:user_id
 // @access  Private, familyAdmin
 const removeAdmin = asyncHandler(async (req, res) => {
-  // Check if user_id is castable to ObjectId
-  if (!req.params.user_id.match(/^[0-9a-fA-F]{24}$/)) {
-    res.status(400);
-    throw new Error("Not valid id");
-  }
   // Check if user exists
   const user = await User.findById(req.params.user_id);
   if (!user) {

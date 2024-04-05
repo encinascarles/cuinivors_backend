@@ -2,11 +2,6 @@ import asyncHandler from "express-async-handler";
 import Family from "../models/familyModel.js";
 
 const familyAdmin = asyncHandler(async (req, res, next) => {
-  // Check if family_id is castable to ObjectId
-  if (!req.params.family_id.match(/^[0-9a-fA-F]{24}$/)) {
-    res.status(400);
-    throw new Error("Not valid id");
-  }
   // Find family
   const family = await Family.findById(req.params.family_id);
   // Check if family exists
@@ -32,11 +27,6 @@ const familyAdmin = asyncHandler(async (req, res, next) => {
 });
 
 const familyUser = asyncHandler(async (req, res, next) => {
-  // Check if family_id is castable to ObjectId
-  if (!req.params.family_id.match(/^[0-9a-fA-F]{24}$/)) {
-    res.status(400);
-    throw new Error("Not valid id");
-  }
   // Find family
   const family = await Family.findById(req.params.family_id);
   // Check if family exists

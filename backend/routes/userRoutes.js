@@ -22,12 +22,10 @@ const userRegisterValidation = [
   body("email").isEmail(),
   body("password").isLength({ min: 8 }),
 ];
-
 const userLoginValidation = [
   body("email").isEmail(),
   body("password").isLength({ min: 8 }),
 ];
-
 const userUpdateValidation = [
   body("name").optional().not().isEmpty(),
   body("email").optional().isEmail(),

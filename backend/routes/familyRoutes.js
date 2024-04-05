@@ -15,27 +15,97 @@ import {
   deleteFamily,
 } from "../controllers/familyControllers.js";
 import { familyAdmin, familyUser } from "../middleware/familyMiddleware.js";
+import { body, param } from "express-validator";
+import { validateRequest } from "../middleware/validationMiddleware.js";
 
 const upload = multer({ storage: multer.memoryStorage() });
 
+const familyIdValidation = [param("family_id").isMongoId()];
+const userIdValidation = [param("user_id").isMongoId()];
+const familyCreateValidation = [
+  body("name").not().isEmpty(),
+  body("description").not().isEmpty(),
+];
+const familyModifyValidation = [
+  body("name").optional().not().isEmpty(),
+  body("description").optional().not().isEmpty(),
+];
+
 const router = express.Router();
 
-router.route("/").post(protect, createFamily);
+router
+  .route("/")
+  .post(
+    protect,
+    familyCreateValidation,
+    validateRequest,
+    upload.single("family_image"),
+    createFamily
+  );
 router.route("/recipes").get(protect, listAllFamiliesRecipes);
-router.route("/:family_id").get(protect, familyUser, getFamilyById);
 router
   .route("/:family_id")
-  .put(protect, familyAdmin, modifyFamily)
-  .delete(protect, familyAdmin, deleteFamily);
-router.route("/:family_id/members").get(protect, familyUser, listMembers);
+  .get(protect, familyIdValidation, validateRequest, familyUser, getFamilyById);
+router
+  .route("/:family_id")
+  .put(
+    protect,
+    familyIdValidation,
+    familyModifyValidation,
+    validateRequest,
+    familyAdmin,
+    upload.single("family_image"),
+    modifyFamily
+  )
+  .delete(
+    protect,
+    familyIdValidation,
+    validateRequest,
+    familyAdmin,
+    deleteFamily
+  );
+router
+  .route("/:family_id/members")
+  .get(protect, familyIdValidation, validateRequest, familyUser, listMembers);
 router
   .route("/:family_id/members/:user_id")
-  .delete(protect, familyAdmin, removeMember);
-router.route("/:family_id/recipes").get(protect, familyUser, listRecipes);
-router.route("/:family_id/leave").delete(protect, familyUser, leaveFamily);
+  .delete(
+    protect,
+    familyIdValidation,
+    userIdValidation,
+    validateRequest,
+    familyAdmin,
+    removeMember
+  );
+router
+  .route("/:family_id/recipes")
+  .get(protect, familyIdValidation, validateRequest, familyUser, listRecipes);
+router
+  .route("/:family_id/leave")
+  .delete(
+    protect,
+    familyIdValidation,
+    validateRequest,
+    familyUser,
+    leaveFamily
+  );
 router
   .route("/:family_id/admins/:user_id")
-  .post(protect, familyAdmin, addAdmin)
-  .delete(protect, familyAdmin, removeAdmin);
+  .post(
+    protect,
+    familyIdValidation,
+    userIdValidation,
+    validateRequest,
+    familyAdmin,
+    addAdmin
+  )
+  .delete(
+    protect,
+    familyIdValidation,
+    userIdValidation,
+    validateRequest,
+    familyAdmin,
+    removeAdmin
+  );
 
 export default router;

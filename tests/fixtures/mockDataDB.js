@@ -4,6 +4,7 @@ const user1Id = new mongoose.Types.ObjectId();
 const user2Id = new mongoose.Types.ObjectId();
 const user3Id = new mongoose.Types.ObjectId();
 const user4Id = new mongoose.Types.ObjectId();
+const user5Id = new mongoose.Types.ObjectId();
 
 const family1Id = new mongoose.Types.ObjectId();
 const family2Id = new mongoose.Types.ObjectId();
@@ -54,6 +55,15 @@ const userFixtures = [
     email: "user4@example.com",
     password: "password4",
     profile_image: "/images/users/user4.jpg",
+    favorites: [],
+  },
+  {
+    _id: user5Id,
+    name: "User 5",
+    username: "user5",
+    email: "user5@example.com",
+    password: "password5",
+    profile_image: "/images/users/user5.jpg",
     favorites: [],
   },
 ];
