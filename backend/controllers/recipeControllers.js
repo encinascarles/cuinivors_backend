@@ -56,6 +56,7 @@ const addRecipe = asyncHandler(async (req, res) => {
   // Send the recipe data
   if (recipe) {
     res.status(201).json({
+      message: "Recipe created",
       recipe: {
         _id: recipe._id,
         name: recipe.name,

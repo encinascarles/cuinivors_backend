@@ -1,14 +1,7 @@
 import supertest from "supertest";
 import { expect } from "chai";
 import app from "../backend/server.js";
-import {
-  loadUsers,
-  loadFamilies,
-  loadRecipes,
-  clearUsers,
-  clearFamilies,
-  clearRecipes,
-} from "./fixtures/loadFixtures.js";
+import { refreshFamilies, refreshFixtures } from "./fixtures/loadFixtures.js";
 import {
   userFixtures,
   recipeFixtures,
@@ -16,40 +9,34 @@ import {
 } from "./fixtures/mockDataDB.js";
 import Family from "../backend/models/familyModel.js";
 
+// Define the URLs
 const loginURL = "/api/users/auth/";
-
 const familyURL = "/api/families/";
 
-const login = async (agent, user) => {
+let agent;
+
+const login = async (user) => {
   const res = await agent
     .post(loginURL)
-    .send({ email: user.email, password: user.password });
-  // Check if the response is successful
-  expect(res.statusCode).to.equal(200);
+    .send({ email: user.email, password: user.password })
+    .expect(200);
   // Check cookie
   expect(res.headers["set-cookie"]).to.exist;
   return res;
 };
 
-let agent;
-
-beforeEach(() => {
-  agent = supertest.agent(app);
-});
-
 describe("Family API", () => {
-  //to test with postman
-  // after(async function () {
-  //   await loadFixtures();
-  // });
+  before(async () => {
+    await refreshFixtures();
+    agent = supertest.agent(app);
+  });
 
   describe("Create new family: POST /api/families", () => {
-    beforeEach(async () => {
-      await clearFamilies();
-      await clearUsers();
-      await loadFamilies();
-      await loadUsers();
-      await login(agent, userFixtures[0]);
+    before(async function () {
+      await login(userFixtures[0]);
+    });
+    afterEach(async () => {
+      await refreshFamilies();
     });
 
     it("should create a family with valid data", async () => {
@@ -75,11 +62,11 @@ describe("Family API", () => {
 
     it("should not create a family with invalid data", async () => {
       // Create a family with invalid data
-      const familyData = {
+      const invalidData = {
         name: "",
         description: "",
       };
-      const res = await agent.post(familyURL).send(familyData);
+      const res = await agent.post(familyURL).send(invalidData);
       // Check if the response is unsuccessful
       expect(res.statusCode).to.equal(400);
       expect(res.body.message).to.equal("Not valid data");
@@ -94,20 +81,19 @@ describe("Family API", () => {
       const res = await supertest(app).post(familyURL).send(familyData);
       // Check if the response is unsuccessful
       expect(res.statusCode).to.equal(401);
+      expect(res.body.message).to.equal("Not authorized, no token");
     });
   });
+
   describe("Get family by ID: GET /api/families/:family_id", () => {
-    beforeEach(async () => {
-      await clearFamilies();
-      await clearUsers();
-      await loadFamilies();
-      await loadUsers();
-      await login(agent, userFixtures[0]);
+    before(async function () {
+      await login(userFixtures[0]);
     });
 
     it("should return the family", async () => {
       // Get the family
       const familyRes = await agent.get(familyURL + familyFixtures[0]._id);
+      // Check if the response is successful
       expect(familyRes.statusCode).to.equal(200);
       expect(familyRes.body.family).to.deep.include({
         _id: familyFixtures[0]._id.toString(),
@@ -118,30 +104,38 @@ describe("Family API", () => {
     });
 
     it("should return 404 if the family does not exist", async () => {
+      // Get a non-existent family
       const familyRes = await agent.get(familyURL + "660f0cfe6e4cca00864e4c99");
+      // Check if the response is unsuccessful
       expect(familyRes.statusCode).to.equal(404);
+      expect(familyRes.body.message).to.equal("Family not found");
     });
 
     it("should return 400 if the family ID is not valid", async () => {
+      // Get a family with an invalid ID
       const familyRes = await agent.get(familyURL + "non-castable-id");
+      // Check if the response is unsuccessful
       expect(familyRes.statusCode).to.equal(400);
       expect(familyRes.body.message).to.equal("Not valid id");
     });
 
     it("should return 401 if the user is not authenticated", async () => {
+      // Get the family without authentication
       const familyRes = await supertest(app).get(
         familyURL + familyFixtures[0]._id
       );
+      // Check if the response is unsuccessful
       expect(familyRes.statusCode).to.equal(401);
+      expect(familyRes.body.message).to.equal("Not authorized, no token");
     });
   });
+
   describe("Modify family by ID: PUT /api/families/:family_id", () => {
-    beforeEach(async () => {
-      await clearFamilies();
-      await clearUsers();
-      await loadFamilies();
-      await loadUsers();
-      await login(agent, userFixtures[0]);
+    before(async () => {
+      await login(userFixtures[0]);
+    });
+    afterEach(async () => {
+      await refreshFamilies();
     });
 
     it("should update the family", async () => {
@@ -153,6 +147,7 @@ describe("Family API", () => {
       const res = await agent
         .put(familyURL + familyFixtures[0]._id)
         .send(familyData);
+      // Check if the response is successful
       expect(res.statusCode).to.equal(200);
       expect(res.body.message).to.equal("Family updated");
       expect(res.body.family).to.deep.include({
@@ -171,6 +166,7 @@ describe("Family API", () => {
     });
 
     it("should return 404 if the family does not exist", async () => {
+      // Update a non-existent family
       const familyData = {
         name: "Updated Family",
         description: "This is an updated family",
@@ -178,10 +174,13 @@ describe("Family API", () => {
       const res = await agent
         .put(familyURL + "660f0cfe6e4cca00864e4c99")
         .send(familyData);
+      // Check if the response is unsuccessful
       expect(res.statusCode).to.equal(404);
+      expect(res.body.message).to.equal("Family not found");
     });
 
     it("should return 400 if the family ID is not valid", async () => {
+      // Update a family with an invalid ID
       const familyData = {
         name: "Updated Family",
         description: "This is an updated family",
@@ -189,11 +188,13 @@ describe("Family API", () => {
       const res = await agent
         .put(familyURL + "non-castable-id")
         .send(familyData);
+      // Check if the response is unsuccessful
       expect(res.statusCode).to.equal(400);
       expect(res.body.message).to.equal("Not valid id");
     });
 
     it("should return 401 if the user is not authenticated", async () => {
+      // Update the family without authentication
       const familyData = {
         name: "Updated Family",
         description: "This is an updated family",
@@ -201,16 +202,15 @@ describe("Family API", () => {
       const res = await supertest(app)
         .put(familyURL + familyFixtures[0]._id)
         .send(familyData);
+      // Check if the response is unsuccessful
       expect(res.statusCode).to.equal(401);
+      expect(res.body.message).to.equal("Not authorized, no token");
     });
   });
+
   describe("List family members: GET /api/families/:family_id/members", () => {
-    beforeEach(async () => {
-      await clearFamilies();
-      await clearUsers();
-      await loadFamilies();
-      await loadUsers();
-      await login(agent, userFixtures[0]);
+    before(async () => {
+      await login(userFixtures[0]);
     });
 
     it("should return the family members", async () => {
@@ -218,6 +218,7 @@ describe("Family API", () => {
       const membersRes = await agent.get(
         familyURL + familyFixtures[0]._id + "/members"
       );
+      // Check if the response is successful
       expect(membersRes.statusCode).to.equal(200);
       expect(membersRes.body.members).to.have.lengthOf(2);
       expect(membersRes.body.members[0]).to.deep.include({
@@ -230,32 +231,40 @@ describe("Family API", () => {
     });
 
     it("should return 400 if the family ID is not valid", async () => {
+      // Get the family members with an invalid ID
       const membersRes = await agent.get(familyURL + "non-castable-id/members");
+      // Check if the response is unsuccessful
       expect(membersRes.statusCode).to.equal(400);
       expect(membersRes.body.message).to.equal("Not valid id");
     });
 
     it("should return 404 if the family does not exist", async () => {
+      // Get the members of a non-existent family
       const membersRes = await agent.get(
         familyURL + "660f0cfe6e4cca00864e4c99/members"
       );
+      // Check if the response is unsuccessful
       expect(membersRes.statusCode).to.equal(404);
+      expect(membersRes.body.message).to.equal("Family not found");
     });
 
     it("should return 401 if the user is not authenticated", async () => {
+      // Get the family members without authentication
       const membersRes = await supertest(app).get(
         familyURL + familyFixtures[0]._id + "/members"
       );
+      // Check if the response is unsuccessful
       expect(membersRes.statusCode).to.equal(401);
+      expect(membersRes.body.message).to.equal("Not authorized, no token");
     });
   });
+
   describe("Remove member from family: DELETE /api/families/:family_id/members/:user_id", () => {
-    beforeEach(async () => {
-      await clearFamilies();
-      await clearUsers();
-      await loadFamilies();
-      await loadUsers();
-      await login(agent, userFixtures[0]);
+    before(async () => {
+      await login(userFixtures[0]);
+    });
+    afterEach(async () => {
+      await refreshFamilies();
     });
 
     it("should remove the member from the family", async () => {
@@ -263,61 +272,69 @@ describe("Family API", () => {
       const res = await agent.delete(
         familyURL + familyFixtures[0]._id + "/members/" + userFixtures[1]._id
       );
+      // Check if the response is successful
       expect(res.statusCode).to.equal(200);
       expect(res.body.message).to.equal("Member removed from family");
-      // Verify the member was removed from the family
+      // Verify the user was removed from the family
       const familyInDb = await Family.findById(familyFixtures[0]._id);
       expect(familyInDb.members).to.not.include(userFixtures[1]._id);
       expect(familyInDb.admins).to.not.include(userFixtures[1]._id);
     });
 
     it("should return 404 if the family does not exist", async () => {
+      // Remove a member from a non-existent family
       const res = await agent.delete(
         familyURL + "660f0cfe6e4cca00864e4c99/members/" + userFixtures[1]._id
       );
+      // Check if the response is unsuccessful
       expect(res.statusCode).to.equal(404);
+      expect(res.body.message).to.equal("Family not found");
     });
 
     it("should return 400 if the user is trying to remove himself", async () => {
+      // Remove the user from the family
       const res = await agent.delete(
         familyURL + familyFixtures[0]._id + "/members/" + userFixtures[0]._id
       );
+      // Check if the response is unsuccessful
       expect(res.statusCode).to.equal(400);
       expect(res.body.message).to.equal("Cannot remove yourself");
     });
 
     it("should return 400 if the family ID is not valid", async () => {
+      // Remove a member from a family with an invalid ID
       const res = await agent.delete(
         familyURL + "non-castable-id/members/" + userFixtures[1]._id
       );
+      // Check if the response is unsuccessful
       expect(res.statusCode).to.equal(400);
       expect(res.body.message).to.equal("Not valid id");
     });
 
     it("should return 400 if the user ID is not valid", async () => {
+      // Remove a member with an invalid ID
       const res = await agent.delete(
         familyURL + familyFixtures[0]._id + "/members/non-castable-id"
       );
+      // Check if the response is unsuccessful
       expect(res.statusCode).to.equal(400);
       expect(res.body.message).to.equal("Not valid id");
     });
 
     it("should return 401 if the user is not authenticated", async () => {
+      // Remove the member from the family without authentication
       const res = await supertest(app).delete(
         familyURL + familyFixtures[0]._id + "/members/" + userFixtures[1]._id
       );
+      // Check if the response is unsuccessful
       expect(res.statusCode).to.equal(401);
+      expect(res.body.message).to.equal("Not authorized, no token");
     });
   });
+
   describe("List family recipes: GET /api/families/:family_id/recipes", () => {
-    beforeEach(async () => {
-      await clearFamilies();
-      await clearUsers();
-      await clearRecipes();
-      await loadFamilies();
-      await loadUsers();
-      await loadRecipes();
-      await login(agent, userFixtures[0]);
+    before(async () => {
+      await login(userFixtures[0]);
     });
 
     it("should return the family recipes", async () => {
@@ -325,6 +342,7 @@ describe("Family API", () => {
       const recipesRes = await agent.get(
         familyURL + familyFixtures[0]._id + "/recipes"
       );
+      // Check if the response is successful
       expect(recipesRes.statusCode).to.equal(200);
       expect(recipesRes.body.recipes).to.have.lengthOf(3);
       expect(recipesRes.body.recipes[0]).to.deep.include({
@@ -340,39 +358,42 @@ describe("Family API", () => {
     });
 
     it("should return 404 if the family does not exist", async () => {
+      // Get the recipes of a non-existent family
       const recipesRes = await agent.get(
         familyURL + "660f0cfe6e4cca00864e4c99/recipes"
       );
+      // Check if the response is unsuccessful
       expect(recipesRes.statusCode).to.equal(404);
+      expect(recipesRes.body.message).to.equal("Family not found");
     });
 
     it("should return 400 if the family ID is not valid", async () => {
+      // Get the recipes of a family with an invalid ID
       const recipesRes = await agent.get(familyURL + "non-castable-id/recipes");
+      // Check if the response is unsuccessful
       expect(recipesRes.statusCode).to.equal(400);
       expect(recipesRes.body.message).to.equal("Not valid id");
     });
 
     it("should return 401 if the user is not authenticated", async () => {
+      // Get the family recipes without authentication
       const recipesRes = await supertest(app).get(
         familyURL + familyFixtures[0]._id + "/recipes"
       );
+      // Check if the response is unsuccessful
       expect(recipesRes.statusCode).to.equal(401);
     });
   });
+
   describe("List all families recipes: GET /api/families/recipes", () => {
-    beforeEach(async () => {
-      await clearFamilies();
-      await clearUsers();
-      await clearRecipes();
-      await loadFamilies();
-      await loadUsers();
-      await loadRecipes();
-      await login(agent, userFixtures[0]);
+    before(async () => {
+      await login(userFixtures[0]);
     });
 
     it("should return all user families recipes", async () => {
       // Get all user families recipes
       const recipesRes = await agent.get(familyURL + "recipes");
+      // Check if the response is successful
       expect(recipesRes.statusCode).to.equal(200);
       expect(recipesRes.body.recipes).to.have.lengthOf(4);
       expect(recipesRes.body.recipes[0]).to.deep.include({
@@ -388,17 +409,20 @@ describe("Family API", () => {
     });
 
     it("should return 401 if the user is not authenticated", async () => {
+      // Get all user families recipes without authentication
       const recipesRes = await supertest(app).get(familyURL + "recipes");
+      // Check if the response is unsuccessful
       expect(recipesRes.statusCode).to.equal(401);
+      expect(recipesRes.body.message).to.equal("Not authorized, no token");
     });
   });
+
   describe("Leave family: DELETE /api/families/:family_id/leave", () => {
-    beforeEach(async () => {
-      await clearFamilies();
-      await clearUsers();
-      await loadFamilies();
-      await loadUsers();
-      await login(agent, userFixtures[0]);
+    before(async () => {
+      await login(userFixtures[0]);
+    });
+    afterEach(async () => {
+      await refreshFamilies();
     });
 
     it("should leave the family", async () => {
@@ -406,6 +430,7 @@ describe("Family API", () => {
       const res = await agent.delete(
         familyURL + familyFixtures[1]._id + "/leave"
       );
+      // Check if the response is successful
       expect(res.statusCode).to.equal(200);
       expect(res.body.message).to.equal("Left family");
       // Verify the user left the family
@@ -414,40 +439,50 @@ describe("Family API", () => {
     });
 
     it("should return 400 if the user is the last admin", async () => {
+      // Leave the family as last admin
       const res = await agent.delete(
         familyURL + familyFixtures[0]._id + "/leave"
       );
+      // Check if the response is unsuccessful
       expect(res.statusCode).to.equal(400);
       expect(res.body.message).to.equal("Cannot leave as last admin");
     });
 
     it("should return 404 if the family does not exist", async () => {
+      // Leave a non-existent family
       const res = await agent.delete(
         familyURL + "660f0cfe6e4cca00864e4c99/leave"
       );
+      // Check if the response is unsuccessful
       expect(res.statusCode).to.equal(404);
+      expect(res.body.message).to.equal("Family not found");
     });
 
     it("should return 400 if the family ID is not valid", async () => {
+      // Leave a family with an invalid ID
       const res = await agent.delete(familyURL + "non-castable-id/leave");
+      // Check if the response is unsuccessful
       expect(res.statusCode).to.equal(400);
       expect(res.body.message).to.equal("Not valid id");
     });
 
     it("should return 401 if the user is not authenticated", async () => {
+      // Leave the family without authentication
       const res = await supertest(app).delete(
         familyURL + familyFixtures[0]._id + "/leave"
       );
+      // Check if the response is unsuccessful
       expect(res.statusCode).to.equal(401);
+      expect(res.body.message).to.equal("Not authorized, no token");
     });
   });
+
   describe("Add admin to family: POST /api/families/:family_id/admins/:user_id", () => {
-    beforeEach(async () => {
-      await clearFamilies();
-      await clearUsers();
-      await loadFamilies();
-      await loadUsers();
-      await login(agent, userFixtures[0]);
+    before(async () => {
+      await login(userFixtures[0]);
+    });
+    afterEach(async () => {
+      await refreshFamilies();
     });
 
     it("should add an admin to the family", async () => {
@@ -455,6 +490,7 @@ describe("Family API", () => {
       const res = await agent.post(
         familyURL + familyFixtures[0]._id + "/admins/" + userFixtures[1]._id
       );
+      // Check if the response is successful
       expect(res.statusCode).to.equal(200);
       expect(res.body.message).to.equal("Admin added");
       // Verify the user was added as an admin to the family
@@ -463,67 +499,81 @@ describe("Family API", () => {
     });
 
     it("should return 400 if the user is already an admin", async () => {
+      // Add an admin that is already an admin
       const res = await agent.post(
         familyURL + familyFixtures[0]._id + "/admins/" + userFixtures[0]._id
       );
+      // Check if the response is unsuccessful
       expect(res.statusCode).to.equal(400);
       expect(res.body.message).to.equal("User is already an admin");
     });
 
     it("should return 404 if the family does not exist", async () => {
+      // Add an admin to a non-existent family
       const res = await agent.post(
         familyURL + "660f0cfe6e4cca00864e4c99/admins/" + userFixtures[1]._id
       );
+      // Check if the response is unsuccessful
       expect(res.statusCode).to.equal(404);
+      expect(res.body.message).to.equal("Family not found");
     });
 
     it("should return 404 if the user does not exist", async () => {
+      // Add a non-existent user as an admin
       const res = await agent.post(
         familyURL + familyFixtures[0]._id + "/admins/660f0cfe6e4cca00864e4c99"
       );
+      // Check if the response is unsuccessful
       expect(res.statusCode).to.equal(404);
       expect(res.body.message).to.equal("User not found");
     });
 
     it("should return 400 if the user is not a member of the family", async () => {
+      // Add a user that is not a member of the family as an admin
       const res = await agent.post(
         familyURL + familyFixtures[0]._id + "/admins/" + userFixtures[3]._id
       );
+      // Check if the response is unsuccessful
       expect(res.statusCode).to.equal(400);
       expect(res.body.message).to.equal("User is not a member of the family");
     });
 
     it("should return 400 if the family ID is not valid", async () => {
+      // Add an admin to a family with an invalid ID
       const res = await agent.post(
         familyURL + "non-castable-id/admins/" + userFixtures[1]._id
       );
+      // Check if the response is unsuccessful
       expect(res.statusCode).to.equal(400);
       expect(res.body.message).to.equal("Not valid id");
     });
 
     it("should return 400 if the user ID is not valid", async () => {
+      // Add an admin with an invalid ID
       const res = await agent.post(
         familyURL + familyFixtures[0]._id + "/admins/non-castable-id"
       );
+      // Check if the response is unsuccessful
       expect(res.statusCode).to.equal(400);
       expect(res.body.message).to.equal("Not valid id");
     });
 
     it("should return 401 if the user is not authenticated", async () => {
+      // Add an admin to the family without authentication
       const res = await supertest(app).post(
         familyURL + familyFixtures[0]._id + "/admins/" + userFixtures[1]._id
       );
+      // Check if the response is unsuccessful
       expect(res.statusCode).to.equal(401);
     });
   });
 
   describe("Remove admin from family: DELETE /api/families/:family_id/admins/:user_id", () => {
-    beforeEach(async () => {
-      await clearFamilies();
-      await clearUsers();
-      await loadFamilies();
-      await loadUsers();
-      await login(agent, userFixtures[0]);
+    before(async () => {
+      await login(userFixtures[0]);
+    });
+    afterEach(async () => {
+      await refreshFamilies();
     });
 
     it("should remove an admin from the family", async () => {
@@ -531,6 +581,7 @@ describe("Family API", () => {
       const res = await agent.delete(
         familyURL + familyFixtures[3]._id + "/admins/" + userFixtures[3]._id
       );
+      // Check if the response is successful
       expect(res.statusCode).to.equal(200);
       expect(res.body.message).to.equal("Admin removed");
       // Verify the user was removed as an admin from the family
@@ -539,72 +590,88 @@ describe("Family API", () => {
     });
 
     it("should return 403 if the user isn't an admin", async () => {
+      // Remove an admin from the family as a non-admin
       const res = await agent.delete(
         familyURL + familyFixtures[1]._id + "/admins/" + userFixtures[1]._id
       );
+      // Check if the response is unsuccessful
       expect(res.statusCode).to.equal(403);
       expect(res.body.message).to.equal("Not authorized as an admin");
     });
 
     it("should return 400 if the user is the last admin", async () => {
+      // Remove the last admin from the family
       const res = await agent.delete(
         familyURL + familyFixtures[0]._id + "/admins/" + userFixtures[0]._id
       );
+      // Check if the response is unsuccessful
       expect(res.statusCode).to.equal(400);
       expect(res.body.message).to.equal("Cannot remove last admin");
     });
 
     it("should return 404 if the family does not exist", async () => {
+      // Remove an admin from a non-existent family
       const res = await agent.delete(
         familyURL + "660f0cfe6e4cca00864e4c99/admins/" + userFixtures[1]._id
       );
+      // Check if the response is unsuccessful
       expect(res.statusCode).to.equal(404);
+      expect(res.body.message).to.equal("Family not found");
     });
 
     it("should return 404 if the user does not exist", async () => {
+      // Remove a non-existent user as an admin
       const res = await agent.delete(
         familyURL + familyFixtures[0]._id + "/admins/660f0cfe6e4cca00864e4c99"
       );
+      // Check if the response is unsuccessful
       expect(res.statusCode).to.equal(404);
       expect(res.body.message).to.equal("User not found");
     });
 
     it("should return 400 if the family ID is not valid", async () => {
+      // Remove an admin from a family with an invalid ID
       const res = await agent.delete(
         familyURL + "non-castable-id/admins/" + userFixtures[1]._id
       );
+      // Check if the response is unsuccessful
       expect(res.statusCode).to.equal(400);
       expect(res.body.message).to.equal("Not valid id");
     });
 
     it("should return 400 if the user ID is not valid", async () => {
+      // Remove an admin with an invalid ID
       const res = await agent.delete(
         familyURL + familyFixtures[0]._id + "/admins/non-castable-id"
       );
+      // Check if the response is unsuccessful
       expect(res.statusCode).to.equal(400);
       expect(res.body.message).to.equal("Not valid id");
     });
 
     it("should return 401 if the user is not authenticated", async () => {
+      // Remove an admin from the family without authentication
       const res = await supertest(app).delete(
         familyURL + familyFixtures[0]._id + "/admins/" + userFixtures[1]._id
       );
+      // Check if the response is unsuccessful
       expect(res.statusCode).to.equal(401);
+      expect(res.body.message).to.equal("Not authorized, no token");
     });
   });
 
   describe("Delete family: DELETE /api/families/:family_id", () => {
-    beforeEach(async () => {
-      await clearFamilies();
-      await clearUsers();
-      await loadFamilies();
-      await loadUsers();
-      await login(agent, userFixtures[0]);
+    before(async () => {
+      await login(userFixtures[0]);
+    });
+    afterEach(async () => {
+      await refreshFamilies();
     });
 
     it("should delete the family", async () => {
       // Delete the family
       const res = await agent.delete(familyURL + familyFixtures[0]._id);
+      // Check if the response is successful
       expect(res.statusCode).to.equal(200);
       expect(res.body.message).to.equal("Family deleted");
       // Verify the family was deleted
@@ -613,25 +680,35 @@ describe("Family API", () => {
     });
 
     it("should return 404 if the family does not exist", async () => {
+      // Delete a non-existent family
       const res = await agent.delete(familyURL + "660f0cfe6e4cca00864e4c99");
+      // Check if the response is unsuccessful
       expect(res.statusCode).to.equal(404);
+      expect(res.body.message).to.equal("Family not found");
     });
 
     it("should return 400 if the family ID is not valid", async () => {
+      // Delete a family with an invalid ID
       const res = await agent.delete(familyURL + "non-castable-id");
+      // Check if the response is unsuccessful
       expect(res.statusCode).to.equal(400);
       expect(res.body.message).to.equal("Not valid id");
     });
 
     it("should return 401 if the user is not authenticated", async () => {
+      // Delete the family without authentication
       const res = await supertest(app).delete(
         familyURL + familyFixtures[0]._id
       );
+      // Check if the response is unsuccessful
       expect(res.statusCode).to.equal(401);
+      expect(res.body.message).to.equal("Not authorized, no token");
     });
 
     it("should return 403 if the user isn't an admin", async () => {
+      // Delete the family as a non-admin
       const res = await agent.delete(familyURL + familyFixtures[1]._id);
+      // Check if the response is unsuccessful
       expect(res.statusCode).to.equal(403);
       expect(res.body.message).to.equal("Not authorized as an admin");
     });

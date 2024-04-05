@@ -50,10 +50,12 @@ const loadInvites = async () => {
 };
 
 const loadFixtures = async () => {
-  await loadUsers();
-  await loadFamilies();
-  await loadRecipes();
-  await loadInvites();
+  await Promise.all([
+    loadUsers(),
+    loadFamilies(),
+    loadRecipes(),
+    loadInvites(),
+  ]);
 };
 
 const clearUsers = async () => {
@@ -89,10 +91,37 @@ const clearInvites = async () => {
 };
 
 const clearFixtures = async () => {
+  await Promise.all([
+    clearUsers(),
+    clearFamilies(),
+    clearRecipes(),
+    clearInvites(),
+  ]);
+};
+
+const refreshUsers = async () => {
   await clearUsers();
+  await loadUsers();
+};
+
+const refreshFamilies = async () => {
   await clearFamilies();
+  await loadFamilies();
+};
+
+const refreshRecipes = async () => {
   await clearRecipes();
+  await loadRecipes();
+};
+
+const refreshInvites = async () => {
   await clearInvites();
+  await loadInvites();
+};
+
+const refreshFixtures = async () => {
+  await clearFixtures();
+  await loadFixtures();
 };
 
 export {
@@ -106,4 +135,9 @@ export {
   clearRecipes,
   clearInvites,
   clearFixtures,
+  refreshUsers,
+  refreshFamilies,
+  refreshRecipes,
+  refreshInvites,
+  refreshFixtures,
 };

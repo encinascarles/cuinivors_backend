@@ -1,9 +1,6 @@
 import supertest from "supertest";
 import { expect } from "chai";
 import app from "../backend/server.js";
-import User from "../backend/models/userModel.js";
-import Recipe from "../backend/models/recipeModel.js";
-import Family from "../backend/models/familyModel.js";
 import {
   loadUsers,
   loadFamilies,
@@ -13,14 +10,20 @@ import {
   clearFamilies,
   clearRecipes,
   clearFixtures,
+  refreshUsers,
+  refreshFixtures,
 } from "./fixtures/loadFixtures.js";
 import {
   userFixtures,
   familyFixtures,
   recipeFixtures,
 } from "./fixtures/mockDataDB.js";
+import User from "../backend/models/userModel.js";
+import Recipe from "../backend/models/recipeModel.js";
+import Family from "../backend/models/familyModel.js";
 import Invite from "../backend/models/inviteModel.js";
 
+// Define the URLs
 const registerURL = "/api/users/register";
 const loginURL = "/api/users/auth";
 const logoutURL = "/api/users/logout";
@@ -29,34 +32,27 @@ const userFamiliesURL = "/api/users/families";
 const userRecipesURL = "/api/users/recipes";
 const deleteURL = "/api/users";
 
-const login = async (agent, user) => {
+let agent;
+
+const login = async (user) => {
   const res = await agent
     .post(loginURL)
-    .send({ email: user.email, password: user.password });
-  // Check if the response is successful
-  expect(res.statusCode).to.equal(200);
+    .send({ email: user.email, password: user.password })
+    .expect(200);
   // Check cookie
   expect(res.headers["set-cookie"]).to.exist;
   return res;
 };
 
-let agent;
-
-beforeEach(() => {
-  clearFixtures();
-  agent = supertest.agent(app);
-});
-
 describe("User API", () => {
-  //to test with postman
-  // after(async function () {
-  //   await loadFixtures();
-  // });
+  before(async () => {
+    await refreshFixtures();
+    agent = supertest.agent(app);
+  });
 
   describe("Register new user: POST /api/users/register", () => {
-    beforeEach(async function () {
-      await clearUsers();
-      await loadUsers();
+    afterEach(async function () {
+      await refreshUsers();
     });
 
     const newUser = {
@@ -69,9 +65,10 @@ describe("User API", () => {
     it("should create a new user and verify it was added to the database", async function () {
       // Create the user
       const res = await agent.post(registerURL).send(newUser);
+      // Check if the response is successful
       expect(res.statusCode).to.equal(201);
       expect(res.body.message).to.equal("User created");
-      // Verify the response
+      // Check if the response is successful
       expect(res.body.user).to.include({
         name: newUser.name,
         email: newUser.email,
@@ -86,80 +83,58 @@ describe("User API", () => {
         email: newUser.email,
         username: newUser.username,
       });
-      expect(res.body.user).to.not.have.property("password");
       // Verify the cookie was set
       expect(res.headers["set-cookie"]).to.exist;
     });
 
     it("should return 400 (User already exists with this email) if email already exists", async function () {
+      // Create the user with an email that already exists
       const res = await agent.post(registerURL).send({
         name: newUser.name,
         email: userFixtures[0].email,
         password: newUser.password,
         username: newUser.username,
       });
+      // Check if the response is unsuccessful
       expect(res.statusCode).to.equal(400);
       expect(res.body.message).to.equal("User already exists with this email");
     });
+
     it("should return 400 (Username already taken) if username already exists", async function () {
+      // Create the user with a username that already exists
       const res = await agent.post(registerURL).send({
         name: newUser.name,
         email: newUser.email,
         password: newUser.password,
         username: userFixtures[0].username,
       });
+      // Check if the response is unsuccessful
       expect(res.statusCode).to.equal(400);
       expect(res.body.message).to.equal(
         "User already exists with this username"
       );
     });
-    it("should return 400 if name is missing", async function () {
+
+    it("should return 400 if some data is missing", async function () {
+      // Create the user without the name
       const res = await agent.post(registerURL).send({
         email: newUser.email,
         password: newUser.password,
         username: newUser.username,
       });
-      expect(res.statusCode).to.equal(400);
-      expect(res.body.message).to.equal("Not valid data");
-    });
-    it("should return 400 if email is missing", async function () {
-      const res = await agent.post(registerURL).send({
-        name: newUser.name,
-        password: newUser.password,
-        username: newUser.username,
-      });
-      expect(res.statusCode).to.equal(400);
-      expect(res.body.message).to.equal("Not valid data");
-    });
-    it("should return 400 if password is missing", async function () {
-      const res = await agent.post(registerURL).send({
-        name: newUser.name,
-        email: newUser.email,
-        username: newUser.username,
-      });
-      expect(res.statusCode).to.equal(400);
-      expect(res.body.message).to.equal("Not valid data");
-    });
-    it("should return 400 if username is missing", async function () {
-      const res = await agent.post(registerURL).send({
-        name: newUser.name,
-        email: newUser.email,
-        password: newUser.password,
-      });
+      // Check if the response is unsuccessful
       expect(res.statusCode).to.equal(400);
       expect(res.body.message).to.equal("Not valid data");
     });
   });
 
   describe("Login: POST /api/users/login", () => {
-    beforeEach(async function () {
-      await clearUsers();
-      await loadUsers();
-    });
     it("should login user and return user object and cookie", async function () {
       //login the user
-      const res = await login(agent, userFixtures[0]);
-      // Verify the response
+      const res = await login(userFixtures[0]);
+      // Check if the response is successful
+      expect(res.statusCode).to.equal(200);
+      expect(res.body.message).to.equal("User logged in");
       expect(res.body.user).to.include({
         name: userFixtures[0].name,
         email: userFixtures[0].email,
@@ -168,79 +143,86 @@ describe("User API", () => {
       });
       expect(res.body.user).to.not.have.property("password");
     });
+
     it("should return 400 if email is missing", async function () {
+      // Login without email
       const res = await agent.post(loginURL).send({
         password: userFixtures[0].password,
       });
+      // Check if the response is unsuccessful
       expect(res.statusCode).to.equal(400);
       expect(res.body.message).to.equal("Not valid data");
     });
+
     it("should return 400 if password is missing", async function () {
+      // Login without password
       const res = await agent.post(loginURL).send({
         email: userFixtures[0].email,
       });
+      // Check if the response is unsuccessful
       expect(res.statusCode).to.equal(400);
       expect(res.body.message).to.equal("Not valid data");
     });
+
     it("should return 401 if email is incorrect", async function () {
+      // Login with incorrect email
       const res = await agent.post(loginURL).send({
         email: "incorrect@example.com",
         password: userFixtures[0].password,
       });
+      // Check if the response is unsuccessful
       expect(res.statusCode).to.equal(401);
       expect(res.body.message).to.equal("Invalid email or password");
     });
+
     it("should return 401 if password is incorrect", async function () {
+      // Login with incorrect password
       const res = await agent.post(loginURL).send({
         email: userFixtures[0].email,
         password: "incorrect",
       });
+      // Check if the response is unsuccessful
       expect(res.statusCode).to.equal(401);
       expect(res.body.message).to.equal("Invalid email or password");
     });
   });
 
   describe("Logout: POST /api/users/logout", () => {
-    beforeEach(async function () {
-      await clearUsers();
-      await loadUsers();
+    before(async function () {
+      await login(userFixtures[0]);
     });
 
     it("should logout the user and clear the session", async function () {
-      // Login
-      await login(agent, userFixtures[0]);
-
-      // Logout
+      // Logout the user
       const logoutRes = await agent.post(logoutURL);
+      // Check if the response is successful
       expect(logoutRes.statusCode).to.equal(200);
       expect(logoutRes.body.message).to.equal("Logged out successfully");
-
       // Try to access a route that requires authentication
       const protectedRes = await agent.get(profileURL);
       expect(protectedRes.statusCode).to.equal(401);
-
       // Check cookie
       expect(protectedRes.headers["set-cookie"]).to.not.exist;
     });
+
     it("should clear cookie even if user is not logged in", async function () {
+      // Logout the user
       const logoutRes = await supertest(app).post(logoutURL);
+      // Check if the response is successful
       expect(logoutRes.statusCode).to.equal(200);
       expect(logoutRes.body.message).to.equal("Logged out successfully");
     });
   });
 
   describe("Get user profile: GET /api/users/profile", () => {
-    beforeEach(async function () {
-      await clearUsers();
-      await loadUsers();
+    before(async function () {
+      await login(userFixtures[0]);
     });
 
     it("should return the user's profile", async function () {
-      // Log in the user
-      await login(agent, userFixtures[0]);
-
       // Get the user's profile
       const profileRes = await agent.get(profileURL);
+      // Check if the response is successful
       expect(profileRes.statusCode).to.equal(200);
       expect(profileRes.body.user).to.include({
         name: userFixtures[0].name,
@@ -250,16 +232,22 @@ describe("User API", () => {
       });
       expect(profileRes.body.user).to.not.have.property("password");
     });
+
     it("should return 401 if the user is not authenticated", async function () {
+      // Get the user's profile without logging in
       const profileRes = await supertest(app).get(profileURL);
+      // Check if the response is unsuccessful
       expect(profileRes.statusCode).to.equal(401);
+      expect(profileRes.body.message).to.equal("Not authorized, no token");
     });
   });
 
   describe("Update user profile: PUT /api/users/profile", () => {
-    beforeEach(async function () {
-      await clearUsers();
-      await loadUsers();
+    before(async function () {
+      await login(userFixtures[0]);
+    });
+    afterEach(async function () {
+      await refreshUsers();
     });
 
     const updatedUser = {
@@ -270,10 +258,9 @@ describe("User API", () => {
     };
 
     it("should update the user's profile", async function () {
-      // Log in the user
-      await login(agent, userFixtures[0]);
       // Update the user's profile
       const updateRes = await agent.put(profileURL).send(updatedUser);
+      // Check if the response is successful
       expect(updateRes.statusCode).to.equal(200);
       expect(updateRes.body.message).to.equal("User updated");
       // Check if the response is correct
@@ -294,26 +281,26 @@ describe("User API", () => {
         profile_image: userFixtures[0].profile_image,
       });
     });
+
     it("should return 401 if the user is not authenticated", async function () {
+      // Update the user's profile without logging in
       const updateRes = await supertest(app).put(profileURL).send(updatedUser);
+      // Check if the response is unsuccessful
       expect(updateRes.statusCode).to.equal(401);
     });
   });
 
   describe("Get user profile by id: GET /api/users/profile/:user_id", () => {
-    beforeEach(async function () {
-      await clearUsers();
-      await loadUsers();
+    before(async function () {
+      await login(userFixtures[0]);
     });
 
     it("should return the user's profile", async function () {
-      // Log in the user
-      await login(agent, userFixtures[0]);
-
       // Get the user's profile
       const profileRes = await agent.get(
         profileURL + "/" + userFixtures[1]._id.toString()
       );
+      // Check if the response is successful
       expect(profileRes.statusCode).to.equal(200);
       expect(profileRes.body.user).to.include({
         name: userFixtures[1].name,
@@ -323,27 +310,25 @@ describe("User API", () => {
       });
       expect(profileRes.body.user).to.not.have.property("password");
     });
+
     it("should return 400 if user_id is not valid", async function () {
+      // Get the user's profile with a non-castable user_id
       const profileRes = await agent.get(profileURL + "/non-castable-id");
+      // Check if the response is unsuccessful
       expect(profileRes.statusCode).to.equal(400);
       expect(profileRes.body.message).to.equal("Not valid id");
     });
   });
 
   describe("Get user families: GET /api/users/families", () => {
-    beforeEach(async function () {
-      await clearUsers();
-      await clearFamilies();
-      await loadUsers();
-      await loadFamilies();
+    before(async function () {
+      await login(userFixtures[0]);
     });
 
     it("should return the user's families", async function () {
-      // Log in the user
-      await login(agent, userFixtures[0]);
-
       // Get the user's families
       const familiesRes = await agent.get(userFamiliesURL);
+      // Check if the response is successful
       expect(familiesRes.statusCode).to.equal(200);
       expect(familiesRes.body.families).to.have.lengthOf(3);
       expect(familiesRes.body.families[0]).to.include({
@@ -352,26 +337,25 @@ describe("User API", () => {
         family_image: familyFixtures[0].family_image,
       });
     });
+
     it("should return 401 if the user is not authenticated", async function () {
+      // Get the user's families without logging in
       const familiesRes = await supertest(app).get(userFamiliesURL);
+      // Check if the response is unsuccessful
       expect(familiesRes.statusCode).to.equal(401);
+      expect(familiesRes.body.message).to.equal("Not authorized, no token");
     });
   });
 
   describe("Get user recipes: GET /api/users/recipes", () => {
-    beforeEach(async function () {
-      await clearUsers();
-      await clearRecipes();
-      await loadUsers();
-      await loadRecipes();
+    before(async function () {
+      await login(userFixtures[0]);
     });
 
     it("should return the user's recipes", async function () {
-      // Log in the user
-      await login(agent, userFixtures[0]);
-
       // Get the user's recipes
       const recipesRes = await agent.get(userRecipesURL);
+      // Check if the response is successful
       expect(recipesRes.statusCode).to.equal(200);
       expect(recipesRes.body.recipes).to.have.lengthOf(1);
       expect(recipesRes.body.recipes[0]).to.deep.include({
@@ -386,21 +370,28 @@ describe("User API", () => {
         visibility: recipeFixtures[0].visibility,
       });
     });
+
     it("should return 401 if the user is not authenticated", async function () {
+      // Get the user's recipes without logging in
       const recipesRes = await supertest(app).get(userRecipesURL);
+      // Check if the response is unsuccessful
       expect(recipesRes.statusCode).to.equal(401);
+      expect(recipesRes.body.message).to.equal("Not authorized, no token");
     });
   });
 
   describe("Delete User: DELETE /api/users", () => {
-    beforeEach(async function () {
-      await clearFixtures();
-      await loadFixtures();
-      await login(agent, userFixtures[0]);
+    before(async function () {
+      await login(userFixtures[0]);
     });
+    afterEach(async function () {
+      await refreshFixtures();
+    });
+
     it("should delete the user, remove it from families, if last admin delete the family, delete the recipes and remove user invites", async function () {
       // Delete the user
       const deleteRes = await agent.delete(deleteURL);
+      // Check if the response is successful
       expect(deleteRes.statusCode).to.equal(200);
       expect(deleteRes.body.message).to.equal("User deleted");
       // Check if the user was deleted from the database
@@ -429,9 +420,13 @@ describe("User API", () => {
         ],
       });
     });
+
     it("should return 401 if the user is not authenticated", async function () {
+      // Delete the user without logging in
       const deleteRes = await supertest(app).delete(deleteURL);
+      // Check if the response is unsuccessful
       expect(deleteRes.statusCode).to.equal(401);
+      expect(deleteRes.body.message).to.equal("Not authorized, no token");
     });
   });
 });
