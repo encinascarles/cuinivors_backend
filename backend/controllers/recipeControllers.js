@@ -38,20 +38,25 @@ const addRecipe = asyncHandler(async (req, res) => {
     res.status(400);
     throw new Error("Invalid recipe data, not parsable");
   }
-  // Handle the image upload if the user provided one
-  if (req.file) {
-    try {
-      newRecipe.recipe_image = await uploadFileToBlob(req.file);
-    } catch (error) {
-      res.status(500);
-      throw new Error("Error uploading image.");
-    }
-  }
   // Create the recipe
   const recipe = await Recipe.create({
     ...newRecipe,
     author_id: req.user._id,
   });
+  // Handle the image upload if the user provided one
+  if (req.file) {
+    try {
+      recipe.recipe_image = await uploadFileToBlob(
+        req.file,
+        "recipe_images",
+        `${recipe._id.toString()}_1`
+      );
+      await recipe.save();
+    } catch (error) {
+      res.status(500);
+      throw new Error("Error uploading image.");
+    }
+  }
   // Check if the recipe was created
   if (recipe) {
     // Send the recipe data if the recipe was created
@@ -123,13 +128,26 @@ const editRecipe = asyncHandler(async (req, res) => {
     throw new Error("Invalid recipe data, not parsable");
   }
   //Handle the image upload if the user provided one
+  let oldImageName;
+  let newImageName;
   if (req.file) {
+    oldImageName = oldImageUrl.substring(oldImageUrl.lastIndexOf("/") + 1);
+    newImageName =
+      oldImageName === "default"
+        ? `${req.params.recipe_id}_1`
+        : oldImageName.slice(0, -1) + (parseInt(oldImageName.slice(-1)) + 1);
     try {
-      recipe.recipe_image = await uploadFileToBlob(req.file);
+      // Upload the new image
+      recipe.recipe_image = await uploadFileToBlob(
+        req.file,
+        "recipe_images",
+        newImageName
+      );
     } catch (error) {
       res.status(500);
       throw new Error("Error uploading image.");
     }
+    const oldImageUrl = recipe.recipe_image;
   }
   // Update the recipe
   const updatedRecipe = await Recipe.findByIdAndUpdate(
@@ -139,6 +157,10 @@ const editRecipe = asyncHandler(async (req, res) => {
   );
   // Check if the recipe was updated
   if (updatedRecipe) {
+    // Delete the old image if the recipe image was updated
+    if (req.file && oldImageName !== "default") {
+      await deleteBlob(oldImageName);
+    }
     // Send the updated recipe data if the recipe was updated
     res.json({
       message: "Recipe updated",
@@ -156,6 +178,10 @@ const editRecipe = asyncHandler(async (req, res) => {
       },
     });
   } else {
+    // Delete the new image if the recipe was not updated
+    if (req.file) {
+      await deleteBlob(newImageName);
+    }
     // Send an error if the recipe was not updated
     res.status(400);
     throw new Error("Invalid recipe data");
