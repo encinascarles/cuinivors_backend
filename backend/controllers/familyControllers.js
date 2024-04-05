@@ -14,24 +14,27 @@ const createFamily = asyncHandler(async (req, res) => {
     res.status(400);
     throw new Error("Not valid data");
   }
-  // Handle image upload
-  let family_image = "/defaultfamilyimage";
-  if (req.file) {
-    try {
-      family_image = await uploadFileToBlob(req.file);
-    } catch (error) {
-      res.status(500);
-      throw new Error("Error uploading image");
-    }
-  }
   // Create family
   const family = await Family.create({
     name,
     description,
-    family_image,
     members: [req.user._id],
     admins: [req.user._id],
   });
+  // Handle the image upload if the user provided one
+  if (req.file) {
+    try {
+      family.profile_image = await uploadFileToBlob(
+        req.file,
+        "family_images",
+        `${recipe._id.toString()}_1`
+      );
+      await family.save();
+    } catch (error) {
+      res.status(500);
+      throw new Error("Error uploading image.");
+    }
+  }
   // Check if it was created
   if (family) {
     // Return family if created
@@ -82,15 +85,26 @@ const modifyFamily = asyncHandler(async (req, res) => {
   // Edit family name and description if provided
   req.family.name = req.body.name || req.family.name;
   req.family.description = req.body.description || req.family.description;
-  // Handle image upload
+  //Handle the image upload if the user provided one
+  let oldImageName;
+  let newImageName;
   if (req.file) {
-    let imageUrl = "";
+    const oldImageUrl = req.family.family_image;
+    oldImageName = oldImageUrl.substring(oldImageUrl.lastIndexOf("/") + 1);
+    newImageName =
+      oldImageName === "default"
+        ? `${req.family.family_image}_1`
+        : oldImageName.slice(0, -1) + (parseInt(oldImageName.slice(-1)) + 1);
     try {
-      imageUrl = await uploadFileToBlob(req.file);
-      req.family.image = imageUrl;
+      // Upload the new image
+      req.family.family_image = await uploadFileToBlob(
+        req.file,
+        "family_images",
+        newImageName
+      );
     } catch (error) {
       res.status(500);
-      throw new Error("Error uploading image");
+      throw new Error("Error uploading image.");
     }
   }
   // Save changes
