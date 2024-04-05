@@ -93,7 +93,7 @@ describe("Recipe API", () => {
       });
       // Check if the response is unsuccessful
       expect(res.statusCode).to.equal(400);
-      expect(res.body.message).to.equal("Not valid data, data missing");
+      expect(res.body.message).to.equal("Not valid data");
     });
 
     it("should return 400 if data is not in JSON format", async function () {
@@ -110,7 +110,7 @@ describe("Recipe API", () => {
       });
       // Check if the response is unsuccessful
       expect(res.statusCode).to.equal(400);
-      expect(res.body.message).to.equal("Invalid recipe data, not parsable");
+      expect(res.body.message).to.equal("Not valid data");
     });
 
     it("should return 400 if time is not a number", async function () {
@@ -127,7 +127,60 @@ describe("Recipe API", () => {
       });
       // Check if the response is unsuccessful
       expect(res.statusCode).to.equal(400);
-      expect(res.body.message).to.equal("Invalid recipe data, not parsable");
+      expect(res.body.message).to.equal("Not valid data");
+    });
+
+    it("should return 400 if prep_time or total_time is negative", async function () {
+      // Create the recipe with prep_time and total_time negative
+      const res = await agent.post(recipeURL).send({
+        name: newRecipe.name,
+        prep_time: -10,
+        total_time: -20,
+        ingredients: newRecipe.ingredients,
+        steps: newRecipe.steps,
+        recommendations: newRecipe.recommendations,
+        origin: newRecipe.origin,
+        visibility: newRecipe.visibility,
+      });
+      // Check if the response is unsuccessful
+      expect(res.statusCode).to.equal(400);
+      expect(res.body.message).to.equal("Not valid data");
+    });
+
+    it("should return 400 if visibility is not public, private or family", async function () {
+      // Create the recipe with visibility not public, private or family
+      const res = await agent.post(recipeURL).send({
+        name: newRecipe.name,
+        prep_time: newRecipe.prep_time,
+        total_time: newRecipe.total_time,
+        ingredients: newRecipe.ingredients,
+        steps: newRecipe.steps,
+        recommendations: newRecipe.recommendations,
+        origin: newRecipe.origin,
+        visibility: "not valid",
+      });
+      // Check if the response is unsuccessful
+      expect(res.statusCode).to.equal(400);
+      expect(res.body.message).to.equal("Not valid data");
+    });
+
+    it("should return 400 if the user already has a recipe with the same name", async function () {
+      // Create a recipe with the same name as an existing recipe
+      const res = await agent.post(recipeURL).send({
+        name: recipeFixtures[0].name,
+        prep_time: newRecipe.prep_time,
+        total_time: newRecipe.total_time,
+        ingredients: newRecipe.ingredients,
+        steps: newRecipe.steps,
+        recommendations: newRecipe.recommendations,
+        origin: newRecipe.origin,
+        visibility: newRecipe.visibility,
+      });
+      // Check if the response is unsuccessful
+      expect(res.statusCode).to.equal(400);
+      expect(res.body.message).to.equal(
+        "User already has a recipe with that name"
+      );
     });
 
     it("should return 401 if the user is not authenticated", async function () {
@@ -174,16 +227,6 @@ describe("Recipe API", () => {
       expect(recipeRes.statusCode).to.equal(200);
     });
 
-    it("should return 401 if the user is not authenticated", async function () {
-      // Get the recipe without authentication
-      const recipeRes = await supertest(app).get(
-        recipeURL + recipeFixtures[0]._id
-      );
-      // Check if the response is unsuccessful
-      expect(recipeRes.statusCode).to.equal(401);
-      expect(recipeRes.body.message).to.equal("Not authorized, no token");
-    });
-
     it("should return 403 if the recipe is private to family and the user doesn't have common family", async function () {
       // Get a private recipe outside the user's family
       const recipeRes = await agent.get(recipeURL + recipeFixtures[2]._id);
@@ -202,12 +245,30 @@ describe("Recipe API", () => {
       );
     });
 
+    it("should return 400 if the recipe ID is not valid", async () => {
+      // Get the recipe with a non-castable recipe_id
+      const recipeRes = await agent.get(recipeURL + "non-castable-id");
+      // Check if the response is unsuccessful
+      expect(recipeRes.statusCode).to.equal(400);
+      expect(recipeRes.body.message).to.equal("Not valid data");
+    });
+
     it("should return 404 if the recipe does not exist", async function () {
       // Get a recipe that does not exist
       const recipeRes = await agent.get(recipeURL + "660f0cfe6e4cca00864e4c99");
       // Check if the response is unsuccessful
       expect(recipeRes.statusCode).to.equal(404);
       expect(recipeRes.body.message).to.equal("Recipe not found");
+    });
+
+    it("should return 401 if the user is not authenticated", async function () {
+      // Get the recipe without authentication
+      const recipeRes = await supertest(app).get(
+        recipeURL + recipeFixtures[0]._id
+      );
+      // Check if the response is unsuccessful
+      expect(recipeRes.statusCode).to.equal(401);
+      expect(recipeRes.body.message).to.equal("Not authorized, no token");
     });
   });
 
@@ -266,16 +327,6 @@ describe("Recipe API", () => {
       });
     });
 
-    it("should return 401 if the user is not authenticated", async function () {
-      // Update the recipe without authentication
-      const res = await supertest(app)
-        .put(recipeURL + recipeFixtures[0]._id)
-        .send(updatedRecipe);
-      // Check if the response is unsuccessful
-      expect(res.statusCode).to.equal(401);
-      expect(res.body.message).to.equal("Not authorized, no token");
-    });
-
     it("should return 400 if the recipe ID is not valid", async () => {
       // Update the recipe with a non-castable recipe_id
       const res = await agent
@@ -283,7 +334,7 @@ describe("Recipe API", () => {
         .send(updatedRecipe);
       // Check if the response is unsuccessful
       expect(res.statusCode).to.equal(400);
-      expect(res.body.message).to.equal("Not valid id");
+      expect(res.body.message).to.equal("Not valid data");
     });
 
     it("should return 404 if the recipe does not exist", async function () {
@@ -320,7 +371,87 @@ describe("Recipe API", () => {
       });
       // Check if the response is unsuccessful
       expect(res.statusCode).to.equal(400);
-      expect(res.body.message).to.equal("Invalid recipe data, not parsable");
+      expect(res.body.message).to.equal("Not valid data");
+    });
+
+    it("should return 400 if time is not a number", async function () {
+      // Update the recipe with prep_time and total_time not a number
+      const res = await agent.put(recipeURL + recipeFixtures[0]._id).send({
+        name: updatedRecipe.name,
+        prep_time: "sdfg",
+        total_time: "sdf",
+        ingredients: updatedRecipe.ingredients,
+        steps: updatedRecipe.steps,
+        recommendations: updatedRecipe.recommendations,
+        origin: updatedRecipe.origin,
+        visibility: updatedRecipe.visibility,
+      });
+      // Check if the response is unsuccessful
+      expect(res.statusCode).to.equal(400);
+      expect(res.body.message).to.equal("Not valid data");
+    });
+
+    it("should return 400 if prep_time or total_time is negative", async function () {
+      // Update the recipe with prep_time and total_time negative
+      const res = await agent.put(recipeURL + recipeFixtures[0]._id).send({
+        name: updatedRecipe.name,
+        prep_time: -10,
+        total_time: -20,
+        ingredients: updatedRecipe.ingredients,
+        steps: updatedRecipe.steps,
+        recommendations: updatedRecipe.recommendations,
+        origin: updatedRecipe.origin,
+        visibility: updatedRecipe.visibility,
+      });
+      // Check if the response is unsuccessful
+      expect(res.statusCode).to.equal(400);
+      expect(res.body.message).to.equal("Not valid data");
+    });
+
+    it("should return 400 if visibility is not public, private or family", async function () {
+      // Update the recipe with visibility not public, private or family
+      const res = await agent.put(recipeURL + recipeFixtures[0]._id).send({
+        name: updatedRecipe.name,
+        prep_time: updatedRecipe.prep_time,
+        total_time: updatedRecipe.total_time,
+        ingredients: updatedRecipe.ingredients,
+        steps: updatedRecipe.steps,
+        recommendations: updatedRecipe.recommendations,
+        origin: updatedRecipe.origin,
+        visibility: "not valid",
+      });
+      // Check if the response is unsuccessful
+      expect(res.statusCode).to.equal(400);
+      expect(res.body.message).to.equal("Not valid data");
+    });
+
+    it("should return 400 if the user already has a recipe with the same name", async function () {
+      // Update the recipe with the same name as an existing recipe
+      const res = await agent.put(recipeURL + recipeFixtures[0]._id).send({
+        name: recipeFixtures[0].name,
+        prep_time: updatedRecipe.prep_time,
+        total_time: updatedRecipe.total_time,
+        ingredients: updatedRecipe.ingredients,
+        steps: updatedRecipe.steps,
+        recommendations: updatedRecipe.recommendations,
+        origin: updatedRecipe.origin,
+        visibility: updatedRecipe.visibility,
+      });
+      // Check if the response is unsuccessful
+      expect(res.statusCode).to.equal(400);
+      expect(res.body.message).to.equal(
+        "User already has a recipe with that name"
+      );
+    });
+
+    it("should return 401 if the user is not authenticated", async function () {
+      // Update the recipe without authentication
+      const res = await supertest(app)
+        .put(recipeURL + recipeFixtures[0]._id)
+        .send(updatedRecipe);
+      // Check if the response is unsuccessful
+      expect(res.statusCode).to.equal(401);
+      expect(res.body.message).to.equal("Not authorized, no token");
     });
   });
 
@@ -363,6 +494,18 @@ describe("Recipe API", () => {
       expect(userInDb.favorites).to.include(recipeFixtures[4]._id);
     });
 
+    it("should return 403 if the user is not authorized for the recipe", async function () {
+      // Add a private recipe to favorites
+      const res = await agent.put(
+        recipeURL + recipeFixtures[1]._id + "/favorite"
+      );
+      // Check if the response is unsuccessful
+      expect(res.statusCode).to.equal(403);
+      expect(res.body.message).to.equal(
+        "Private recipe. Not authorized as recipe owner"
+      );
+    });
+
     it("should return 404 if the recipe does not exist", async function () {
       // Add a non-existing recipe to favorites
       const res = await agent.put(
@@ -378,7 +521,7 @@ describe("Recipe API", () => {
       const res = await agent.put(recipeURL + "non-castable-id/favorite");
       // Check if the response is unsuccessful
       expect(res.statusCode).to.equal(400);
-      expect(res.body.message).to.equal("Not valid id");
+      expect(res.body.message).to.equal("Not valid data");
     });
 
     it("should return 400 if the recipe is already in favorites", async function () {
@@ -448,7 +591,7 @@ describe("Recipe API", () => {
       const res = await agent.delete(recipeURL + "non-castable-id/favorite");
       // Check if the response is unsuccessful
       expect(res.statusCode).to.equal(400);
-      expect(res.body.message).to.equal("Not valid id");
+      expect(res.body.message).to.equal("Not valid data");
     });
 
     it("should return 401 if the user is not authenticated", async function () {
@@ -496,7 +639,7 @@ describe("Recipe API", () => {
       const res = await agent.delete(recipeURL + "non-castable-id");
       // Check if the response is unsuccessful
       expect(res.statusCode).to.equal(400);
-      expect(res.body.message).to.equal("Not valid id");
+      expect(res.body.message).to.equal("Not valid data");
     });
 
     it("should return 401 if the user is not the recipe owner", async function () {

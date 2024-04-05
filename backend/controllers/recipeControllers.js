@@ -7,36 +7,25 @@ import { uploadFileToBlob } from "../utils/uploadFileToBlob.js";
 // @route   POST /api/recipes
 // @access  Private
 const addRecipe = asyncHandler(async (req, res) => {
-  // Check if the user provided all the necessary data
-  if (
-    !req.body.name ||
-    !req.body.prep_time ||
-    !req.body.total_time ||
-    !req.body.ingredients ||
-    !req.body.steps ||
-    !req.body.recommendations ||
-    !req.body.origin ||
-    !req.body.visibility
-  ) {
-    res.status(400);
-    throw new Error("Not valid data, data missing");
-  }
   // Get the data from the request
-  let newRecipe = {};
-  try {
-    newRecipe.name = req.body.name;
-    newRecipe.prep_time = Number(req.body.prep_time);
-    if (isNaN(newRecipe.prep_time)) throw new Error();
-    newRecipe.total_time = Number(req.body.total_time);
-    if (isNaN(newRecipe.total_time)) throw new Error();
-    newRecipe.ingredients = JSON.parse(req.body.ingredients);
-    newRecipe.steps = JSON.parse(req.body.steps);
-    newRecipe.recommendations = req.body.recommendations;
-    newRecipe.origin = req.body.origin;
-    newRecipe.visibility = req.body.visibility;
-  } catch (error) {
+  const newRecipe = {
+    name: req.body.name,
+    prep_time: Number(req.body.prep_time),
+    total_time: Number(req.body.total_time),
+    ingredients: JSON.parse(req.body.ingredients),
+    steps: JSON.parse(req.body.steps),
+    recommendations: req.body.recommendations,
+    origin: req.body.origin,
+    visibility: req.body.visibility,
+  };
+  // Check there isn't already a recipe with the same name from the same user
+  const existingRecipe = await Recipe.findOne({
+    name: newRecipe.name,
+    author_id: req.user._id,
+  });
+  if (existingRecipe) {
     res.status(400);
-    throw new Error("Invalid recipe data, not parsable");
+    throw new Error("User already has a recipe with that name");
   }
   // Create the recipe
   const recipe = await Recipe.create({
@@ -111,23 +100,28 @@ const getRecipe = asyncHandler(async (req, res) => {
 // @access  Private, recipeOwner
 const editRecipe = asyncHandler(async (req, res) => {
   // Get the data from the request
-  let recipe = {};
-  try {
-    if (req.body.name) recipe.name = req.body.name;
-    if (req.body.prep_time) recipe.prep_time = Number(req.body.prep_time);
-    if (req.body.total_time) recipe.total_time = Number(req.body.total_time);
-    if (req.body.ingredients)
-      recipe.ingredients = JSON.parse(req.body.ingredients);
-    if (req.body.steps) recipe.steps = JSON.parse(req.body.steps);
-    if (req.body.recommendations)
-      recipe.recommendations = req.body.recommendations;
-    if (req.body.origin) recipe.origin = req.body.origin;
-    if (req.body.visibility) recipe.visibility = req.body.visibility;
-  } catch (error) {
+  let recipe = {
+    name: req.body.name,
+    prep_time: req.body.prep_time ? Number(req.body.prep_time) : undefined,
+    total_time: req.body.total_time ? Number(req.body.total_time) : undefined,
+    ingredients: req.body.ingredients
+      ? JSON.parse(req.body.ingredients)
+      : undefined,
+    steps: req.body.steps ? JSON.parse(req.body.steps) : undefined,
+    recommendations: req.body.recommendations,
+    origin: req.body.origin,
+    visibility: req.body.visibility,
+  };
+  // Check there isn't already a recipe with the same name from the same user
+  const existingRecipe = await Recipe.findOne({
+    name: recipe.name,
+    author_id: req.user._id,
+  });
+  if (existingRecipe && existingRecipe._id.toString() !== req.recipe._id) {
     res.status(400);
-    throw new Error("Invalid recipe data, not parsable");
+    throw new Error("User already has a recipe with that name");
   }
-  //Handle the image upload if the user provided one
+  // Handle the image upload if the user provided one
   let oldImageName;
   let newImageName;
   if (req.file) {

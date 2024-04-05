@@ -3,11 +3,6 @@ import Family from "../models/familyModel.js";
 import Recipe from "../models/recipeModel.js";
 
 const recipeOwner = asyncHandler(async (req, res, next) => {
-  // Check if recipe_id is castable to ObjectId
-  if (!req.params.recipe_id.match(/^[0-9a-fA-F]{24}$/)) {
-    res.status(400);
-    throw new Error("Not valid id");
-  }
   // Find the recipe by ID
   const recipe = await Recipe.findById(req.params.recipe_id);
   // Check if the recipe exists
@@ -30,11 +25,6 @@ const recipeOwner = asyncHandler(async (req, res, next) => {
 });
 
 const recipeAuthorized = asyncHandler(async (req, res, next) => {
-  // Check if recipe_id is castable to ObjectId
-  if (!req.params.recipe_id.match(/^[0-9a-fA-F]{24}$/)) {
-    res.status(400);
-    throw new Error("Not valid id");
-  }
   // Find the recipe by ID
   const recipe = await Recipe.findById(req.params.recipe_id);
   // Check if the recipe exists
