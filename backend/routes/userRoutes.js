@@ -21,16 +21,16 @@ const upload = multer({ storage: multer.memoryStorage() });
 const userRegisterValidation = [
   body("name").not().isEmpty(),
   body("username").not().isEmpty(),
-  body("email").isEmail(),
+  body("email").normalizeEmail().isEmail(),
   body("password").isLength({ min: 8 }),
 ];
 const userLoginValidation = [
-  body("email").isEmail(),
+  body("email").normalizeEmail().isEmail(),
   body("password").isLength({ min: 8 }),
 ];
 const userUpdateValidation = [
   body("name").optional().not().isEmpty(),
-  body("email").optional().isEmail(),
+  body("email").optional().normalizeEmail().isEmail(),
   body("username").optional().not().isEmpty(),
   body("password").optional().isLength({ min: 8 }),
 ];
